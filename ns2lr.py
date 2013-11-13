@@ -15,6 +15,7 @@ class LevelFileReader:
         self.__filename = filename
         self.__bytesread = 0
         self.__materials = []
+        self.__version = 0
 
     def __read_unsigned_int32(self, f):
         data = f.read(4)
@@ -47,7 +48,41 @@ class LevelFileReader:
         return data.decode("utf-8")
 
     def __read_chunk_object(self, f, chunklen):
-        data = f.read(chunklen)
+
+        chunk_start_bytesread = self.__bytesread
+
+        has_layerdata = bool(self.__read_unsigned_int32(f))
+        print(has_layerdata)
+        if has_layerdata:
+            layer_format = self.__read_unsigned_int32(f)
+            num_layerbitvalues = self.__read_unsigned_int32(f)
+            for i in range(num_layerbitvalues):
+                bitmask = self.__read_unsigned_int32(f)
+        entity_groupid = self.__read_unsigned_int32(f)
+        entity_classname_len = self.__read_unsigned_int32(f)
+        entity_classname = self.__read_string(f, entity_classname_len)
+        print(entity_groupid)
+        print(entity_classname_len)
+        print(entity_classname)
+        while ((self.__bytesread - chunk_start_bytesread) < chunklen):
+            object_chunkid = self.__read_unsigned_int32(f)
+            wtf = self.__read_unsigned_int32(f)
+            object_chunklen = self.__read_unsigned_int32(f)
+            print("object_chunkid: "+str(object_chunkid))
+            print("wtf: "+str(wtf))
+            print("object_chunklen: "+str(object_chunklen))
+            prop_name_len = self.__read_unsigned_int32(f)
+            prop_name = self.__read_string(f,6)
+            print("prop_name_len: "+str(prop_name_len))
+            print("prop_name: "+str(prop_name))
+            exit(0)
+            
+        chunk_bytes_read = self.__bytesread - chunk_start_bytesread
+        chunk_bytes_left = chunklen - chunk_bytes_read
+        if chunk_bytes_left != 0:
+            print("[[Error: read " + str(chunk_bytes_read) +
+                  " bytes, should be " + str(chunklen) + " bytes]]")
+            exit(1)
 
     def __read_chunk_mesh(self, f, chunklen):
 
@@ -171,8 +206,8 @@ class LevelFileReader:
             chunk_bytes_read = self.__bytesread - chunk_start_bytesread
             chunk_bytes_left = mesh_chunklen - chunk_bytes_read
             if chunk_bytes_left != 0:
-                print("[[ERROR: read " + str(chunk_bytes_read) +
-                      " bytes, should be " + str(mesh_chunklen) + "bytes]]")
+                print("[[Error: read " + str(chunk_bytes_read) +
+                      " bytes, should be " + str(mesh_chunklen) + " bytes]]")
                 exit(1)
 
     def __read_chunk_layers(self, f, chunklen):
@@ -192,24 +227,20 @@ class LevelFileReader:
 
     def read_level(self):
         with open(self.__filename, "rb") as f:
-            data = f.read(3)
-            magicnumber = data.decode("utf-8")
+
+            magicnumber = self.__read_string(f,3)
             if magicnumber != "LVL":
                 print("not a level file")
                 exit(1)
-            data = f.read(1)
-            version = unpack('B', data)[0]
+
+            self.__version = self.__read_unsigned_char8(f)
             print("Reading level \"" + self.__filename +
-                  "\" (version " + str(version) + ")")
+                  "\" (version " + str(self.__version) + ")")
 
             while True:
-                data = f.read(4)
-                if not data:
-                    print("Done.")
-                    exit(0)
-                chunkid = unpack('I', data)[0]
-                data = f.read(4)
-                chunklen = unpack('I', data)[0]
+                
+                chunkid = self.__read_unsigned_int32(f)
+                chunklen = self.__read_unsigned_int32(f)
 
                 if chunkid == 1:
                     # print("chunk_object")
