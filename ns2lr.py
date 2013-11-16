@@ -3,13 +3,16 @@
 
 import os
 import sys
+import pprint
 
 from struct import *
 
 
 class ReadError(Exception):
+
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
 
@@ -24,11 +27,13 @@ class LevelFileReader:
         self.__bytesread = 0
         self.__materials = []
         self.__version = 0
+        self.__entity_properties = {}
 
     def __read_bytes(self, n):
-        data = self.__level_data[self.__bytesread:self.__bytesread+n]
+        data = self.__level_data[self.__bytesread:self.__bytesread + n]
         if len(data) < n:
-            raise ReadError("Error: expected %d bytes, read %d" % (n, len(data)))
+            raise ReadError(
+                "Error: expected %d bytes, read %d" % (n, len(data)))
         else:
             self.__bytesread += n
             return data
@@ -61,50 +66,91 @@ class LevelFileReader:
         data = self.__read_bytes(n)
         return data.decode("utf-8")
 
+    def __read_chunk(self, chunkid, chunkstart, chunklen):
+
+        if chunkid == 1:
+            self.__read_chunk_object(chunkstart, chunklen)
+        elif chunkid == 2:
+            while self.__bytesread < chunklen:
+                mesh_chunkid = self.__read_unsigned_int32()
+                mesh_chunklen = self.__read_unsigned_int32()
+                mesh_chunkstart = self.__bytesread
+                self.__read_chunk_mesh(
+                    mesh_chunkid, mesh_chunkstart, mesh_chunklen)
+        elif chunkid == 3:
+            self.__read_chunk_layers(chunkstart, chunklen)
+        elif chunkid == 4:
+            self.__read_chunk_viewports(chunkstart, chunklen)
+        elif chunkid == 5:
+            self.__read_chunk_groups(chunkstart, chunklen)
+        elif chunkid == 6:
+            self.__read_chunk_customcolors(chunkstart, chunklen)
+        elif chunkid == 7:
+            self.__read_chunk_editorsettings(chunkstart, chunklen)
+        else:
+            sys.exit("Error: unknown chunk id: %d" % (chunkid))
+            data = self.__read_bytes(chunklen)
+        chunk_bytes_read = self.__bytesread - chunkstart
+        chunk_bytes_left = chunklen - chunk_bytes_read
+        if chunk_bytes_left != 0:
+            sys.exit("Error: read %d bytes, should be %d bytes" %
+                    (chunk_bytes_read, chunklen))
+
     def __read_chunk_object(self, chunkstart, chunklen):
 
+        #print("CHUNK_OBJECT")
+
         has_layerdata = bool(self.__read_unsigned_int32())
-        # print(has_layerdata)
         if has_layerdata:
             layer_format = self.__read_unsigned_int32()
             num_layerbitvalues = self.__read_unsigned_int32()
             for i in range(num_layerbitvalues):
                 bitmask = self.__read_unsigned_int32()
+
         entity_groupid = self.__read_unsigned_int32()
         entity_classname_len = self.__read_unsigned_int32()
         entity_classname = self.__read_string(entity_classname_len)
-        # print(entity_groupid)
-        # print(entity_classname_len)
-        # print(entity_classname)
+
+        #print("%s" % (entity_classname))
+        property_list = []        
+
+        if self.__version == 10:
+            num_properties = self.__read_unsigned_int32()
+        #print("num_properties: %d" % (num_properties))
+        #
+        #for k in range(num_properties):
         while ((self.__bytesread - chunkstart) < chunklen):
-            if self.__version == 10:
-                type_chunkid = self.__read_unsigned_int32()
-            else:
-                type_chunkid = 666
 
             prop_chunkid = self.__read_unsigned_int32()
-            type_chunklen = self.__read_unsigned_int32()
+            if self.__version == 10 and (prop_chunkid != 2):
+                #print("continue.. prop_type was: %d" % (prop_type))
+                continue
+            prop_chunklen = self.__read_unsigned_int32()
+
+            #print("prop_chunkid: %d" % (prop_chunkid))
+            #print("prop_chunklen: %d" % (prop_chunklen))
+            
             prop_name_len = self.__read_unsigned_int32()
             prop_name = self.__read_string(prop_name_len)
+
+            #print("\t%s" % (prop_name))
+            if prop_name not in property_list:
+                property_list.append(prop_name)
+
+            #print(prop_name_len)    # property name length
+            #print(prop_name)
+
             prop_type = self.__read_unsigned_int32()
             num_components = self.__read_unsigned_int32()
             is_animated = bool(self.__read_unsigned_int32())
 
-            #print("prop_chunkid: "+str(prop_chunkid))
-            #print("type_chunkid: "+str(type_chunkid))
-            #print("type_chunklen: "+str(type_chunklen))
-            #print("prop_name_len: "+str(prop_name_len))
-            #print("prop_name: "+str(prop_name))
-            #print("prop_type: "+str(prop_type))
-            #print("num_components: "+str(num_components))
-            #print("is_animated: "+str(is_animated))
-            # float types
+            # Type_Float
             if (prop_type in (2, 5, 6, 7, 8, 9)):
+                #print("Type_Float")
                 for i in range(num_components):
                     if i < 4:
-                        # components beyond the fourth are ignored
+                        # Components beyond the fourth are ignored
                         component_value = self.__read_float32()
-                        # print(component_value)
 
                 # Next the components are assigned based on the type of property
                 # Type_Real, Type_Percentage, Type_Time, and Type_Distance use only the first component
@@ -113,31 +159,45 @@ class LevelFileReader:
                 # and component 4 for alpha (alpha defaults to 1 if there is no
                 # component 4)
 
+            # Type_String
             elif (prop_type in (0, 4)):
+                #print("Type_String")
                 wide_string_len = self.__read_unsigned_int32()
                 wide_string_value = self.__read_string(2 * wide_string_len)
-                #print("wide_string_len: "+str(wide_string_len))
-                #print("wide_string_value: "+str(wide_string_value))
 
+            # Type_Boolean
             elif (prop_type == 1):
+                #print("Type_Boolean")
                 boolean_value = bool(self.__read_unsigned_int32())
 
+            # Type_Integer
             elif (prop_type == 3):
+                #print("Type_Integer")
                 integer_value = self.__read_signed_int32()
 
+            # Type_Choice
             elif (prop_type == 10):
+                #print("Type_Choice")
                 choice_value = self.__read_signed_int32()
+
+            #print("%d/%d" % (self.__bytesread - chunkstart, chunklen))
+
+        if property_list:
+            if entity_classname not in self.__entity_properties:
+                self.__entity_properties[entity_classname] = property_list
+            elif set(self.__entity_properties[entity_classname]) != set(property_list):
+                sys.exit("Error: inconsistent entity properties")
 
     def __read_chunk_mesh(self, chunkid, chunkstart, chunklen):
 
-        # chunk_vertices
+        # Chunk_Vertices
         if chunkid == 1:
             num_vertices = self.__read_unsigned_int32()
             while self.__bytesread < (chunkstart + chunklen):
                 vec3 = self.__read_vec3_float32()
                 smoothing = bool(self.__read_unsigned_char8())
 
-        # chunk_edges
+        # Chunk_Edges
         elif chunkid == 2:
             num_edges = self.__read_unsigned_int32()
             while self.__bytesread < (chunkstart + chunklen):
@@ -145,7 +205,7 @@ class LevelFileReader:
                 vi_2 = self.__read_unsigned_int32()
                 is_flipped = bool(self.__read_unsigned_char8())
 
-        # chunk_faces
+        # Chunk_Faces
         elif chunkid == 3:
             num_faces = self.__read_unsigned_int32()
             for i in range(num_faces):
@@ -162,7 +222,7 @@ class LevelFileReader:
                         is_flipped = bool(self.__read_unsigned_int32())
                         edge_index = self.__read_unsigned_int32()
 
-        # chunk_materials
+        # Chunk_Materials
         elif chunkid == 4:
             nummaterials = self.__read_unsigned_int32()
             for i in range(nummaterials):
@@ -170,7 +230,7 @@ class LevelFileReader:
                 material = self.__read_string(num_chars)
                 self.__materials.append(material)
 
-        # chunk_triangles
+        # Chunk_Triangles
         elif chunkid == 5:
             num_ghost_vertices = self.__read_unsigned_int32()
             for i in range(num_ghost_vertices):
@@ -190,12 +250,12 @@ class LevelFileReader:
                     smoothed_normal_index2 = self.__read_unsigned_int32()
                     smoothed_normal_index3 = self.__read_unsigned_int32()
 
-        # chunk_facelayers
+        # Chunk_Facelayers
         elif chunkid == 6:
             num_facelayers = self.__read_unsigned_int32()
             format = self.__read_unsigned_int32()
             if format != 2:
-                sys.exit("error: format is not 2")
+                sys.exit("Error: format is not 2")
             for i in range(num_facelayers):
                 has_layers = bool(self.__read_unsigned_int32())
                 if has_layers:
@@ -203,7 +263,7 @@ class LevelFileReader:
                     for j in range(num_layerbitvalues):
                         bitmask = self.__read_unsigned_int32()
 
-        # chunk_mappinggroups
+        # Chunk_Mappinggroups
         elif chunkid == 7:
             num_mappinggroups = self.__read_unsigned_int32()
             for i in range(num_mappinggroups):
@@ -213,7 +273,7 @@ class LevelFileReader:
                 offset = self.__read_vec2_float32()
                 normal = self.__read_vec3_float32()
 
-        # chunk_geometrygroups
+        # Chunk_Geometrygroups
         elif chunkid == 8:
             num_vertexgroups = self.__read_unsigned_int32()
             for i in range(num_vertexgroups):
@@ -234,24 +294,24 @@ class LevelFileReader:
                 for j in range(num_indices):
                     index = self.__read_unsigned_int32()
 
-        # skip this chunk
+        # Skip this chunk
         else:
             print("Warning: unknown mesh chunk id: %d" % (chunkid))
             data = self.__read_bytes(chunklen)
 
-    def __read_chunk_layers(self, chunklen):
+    def __read_chunk_layers(self, chunkstart, chunklen):
         data = self.__read_bytes(chunklen)
 
-    def __read_chunk_viewports(self, chunklen):
+    def __read_chunk_viewports(self, chunkstart, chunklen):
         data = self.__read_bytes(chunklen)
 
-    def __read_chunk_groups(self, chunklen):
+    def __read_chunk_groups(self, chunkstart, chunklen):
         data = self.__read_bytes(chunklen)
 
-    def __read_chunk_customcolors(self, chunklen):
+    def __read_chunk_customcolors(self, chunkstart, chunklen):
         data = self.__read_bytes(chunklen)
 
-    def __read_chunk_editorsettings(self, chunklen):
+    def __read_chunk_editorsettings(self, chunkstart, chunklen):
         data = self.__read_bytes(chunklen)
 
     def read_level(self):
@@ -261,7 +321,7 @@ class LevelFileReader:
         magicnumber = self.__read_string(3)
         if magicnumber != "LVL":
             sys.exit("Error: file '%s' is not a level file" %
-                (os.path.basename(self.__filename)))
+                    (os.path.basename(self.__filename)))
 
         self.__version = self.__read_unsigned_char8()
         print("Reading level \"" + self.__filename +
@@ -271,64 +331,18 @@ class LevelFileReader:
 
             try:
                 chunkid = self.__read_unsigned_int32()
-            except ReadError, e:
+            except ReadError as e:
                 sys.exit("Error: unexpected end of file!")
-            
+
             chunklen = self.__read_unsigned_int32()
 
-            if chunkid == 1:
-                # print("chunk_object")
-                chunk_start_bytesread = self.__bytesread
+            chunkstart = self.__bytesread
 
-                self.__read_chunk_object(chunk_start_bytesread, chunklen)
-
-                chunk_bytes_read = self.__bytesread - chunk_start_bytesread
-                chunk_bytes_left = chunklen - chunk_bytes_read
-                if chunk_bytes_left != 0:
-                    sys.exit("Error: read %d bytes, should be %d bytes" %
-                        (chunk_bytes_read, chunklen))
-
-            elif chunkid == 2:
-                # print("chunk_mesh")
-                
-                while self.__bytesread < chunklen:
-
-                    mesh_chunkid = self.__read_unsigned_int32()
-                    mesh_chunklen = self.__read_unsigned_int32()
-                    chunk_start_bytesread = self.__bytesread
-
-                    self.__read_chunk_mesh(mesh_chunkid, chunk_start_bytesread, mesh_chunklen)
-
-                    chunk_bytes_read = self.__bytesread - chunk_start_bytesread
-                    chunk_bytes_left = mesh_chunklen - chunk_bytes_read
-                    if chunk_bytes_left != 0:
-                        sys.exit("Error: read %d bytes, should be %d bytes" %
-                            (chunk_bytes_read, mesh_chunklen))
-
-            elif chunkid == 3:
-                # print("chunk_layers")
-                self.__read_chunk_layers(chunklen)
-
-            elif chunkid == 4:
-                # print("chunk_viewports")
-                self.__read_chunk_viewports(chunklen)
-
-            elif chunkid == 5:
-                # print("chunk_groups")
-                self.__read_chunk_groups(chunklen)
-
-            elif chunkid == 6:
-                # print("chunk_customcolors")
-                self.__read_chunk_customcolors(chunklen)
-
-            elif chunkid == 7:
-                # print("chunk_editorsettings")
-                self.__read_chunk_editorsettings(chunklen)
-
-            else:
-                sys.exit("Error: unknown chunk id: %d" % (chunkid))
+            self.__read_chunk(chunkid, chunkstart, chunklen)
 
         print("success!")
+
+        #pprint.pprint(self.__entity_properties)
 
 
 def main(args):
