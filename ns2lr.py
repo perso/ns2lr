@@ -28,6 +28,7 @@ class LevelFileReader:
         self.__materials = []
         self.__version = 0
         self.__entity_properties = {}
+        self.__skipped_chunks_count = 0
 
     def __read_bytes(self, n):
         data = self.__level_data[self.__bytesread:self.__bytesread + n]
@@ -98,8 +99,6 @@ class LevelFileReader:
 
     def __read_chunk_object(self, chunkstart, chunklen):
 
-        #print("CHUNK_OBJECT")
-
         has_layerdata = bool(self.__read_unsigned_int32())
         if has_layerdata:
             layer_format = self.__read_unsigned_int32()
@@ -110,83 +109,110 @@ class LevelFileReader:
         entity_groupid = self.__read_unsigned_int32()
         entity_classname_len = self.__read_unsigned_int32()
         entity_classname = self.__read_string(entity_classname_len)
-
-        #print("%s" % (entity_classname))
-        property_list = []        
+        property_dict = {}
 
         if self.__version == 10:
             num_properties = self.__read_unsigned_int32()
-        #print("num_properties: %d" % (num_properties))
-        #
-        #for k in range(num_properties):
+
         while ((self.__bytesread - chunkstart) < chunklen):
 
             prop_chunkid = self.__read_unsigned_int32()
             if self.__version == 10 and (prop_chunkid != 2):
-                #print("continue.. prop_type was: %d" % (prop_type))
                 continue
             prop_chunklen = self.__read_unsigned_int32()
-
-            #print("prop_chunkid: %d" % (prop_chunkid))
-            #print("prop_chunklen: %d" % (prop_chunklen))
-            
             prop_name_len = self.__read_unsigned_int32()
             prop_name = self.__read_string(prop_name_len)
-
-            #print("\t%s" % (prop_name))
-            if prop_name not in property_list:
-                property_list.append(prop_name)
-
-            #print(prop_name_len)    # property name length
-            #print(prop_name)
-
             prop_type = self.__read_unsigned_int32()
             num_components = self.__read_unsigned_int32()
             is_animated = bool(self.__read_unsigned_int32())
 
             # Type_Float
             if (prop_type in (2, 5, 6, 7, 8, 9)):
-                #print("Type_Float")
+
+                if prop_name not in property_dict:
+                    property_dict[prop_name] = []
+
+                components = []
+
                 for i in range(num_components):
                     if i < 4:
                         # Components beyond the fourth are ignored
                         component_value = self.__read_float32()
+                        components.append(component_value)
 
-                # Next the components are assigned based on the type of property
-                # Type_Real, Type_Percentage, Type_Time, and Type_Distance use only the first component
-                # Type_Angle uses component 1 for roll, component 2 for pitch, and component 3 for yaw
-                # Type_Color uses component 1 for red, component 2 for green, component 3 for blue,
-                # and component 4 for alpha (alpha defaults to 1 if there is no
-                # component 4)
+                # Next the components are assigned based on the type of
+                # property
 
-            # Type_String
-            elif (prop_type in (0, 4)):
-                #print("Type_String")
-                wide_string_len = self.__read_unsigned_int32()
-                wide_string_value = self.__read_string(2 * wide_string_len)
+                # Type_Real, Type_Percentage, Type_Time, and Type_Distance use
+                # only the first component
+                if (prop_type in (2, 6, 8, 9)):
+                    property_dict[prop_name] = components[0]
 
-            # Type_Boolean
-            elif (prop_type == 1):
-                #print("Type_Boolean")
-                boolean_value = bool(self.__read_unsigned_int32())
+                # Type_Angle uses component 1 for roll, component 2 for pitch,
+                # and component 3 for yaw
+                if (prop_type == 7):
 
-            # Type_Integer
-            elif (prop_type == 3):
-                #print("Type_Integer")
-                integer_value = self.__read_signed_int32()
+                    if len(components) == 3:
+                        property_dict[prop_name].append({"roll": components[0],
+                                                         "pitch": components[1],
+                                                         "yaw": components[2]})
+                    elif len(components) == 2:
+                        property_dict[prop_name].append({"roll": components[0],
+                                                         "pitch": components[1]})
+                    elif len(components) == 1:
+                        property_dict[prop_name].append(
+                            {"roll": components[0]})
+                    else:
+                        sys.exit(
+                            "Error: Type_Angle requires at least one component.")
 
-            # Type_Choice
-            elif (prop_type == 10):
-                #print("Type_Choice")
-                choice_value = self.__read_signed_int32()
+                # Type_Color uses component 1 for red, component 2 for green,
+                # component 3 for blue, and component 4 for alpha
+                # (alpha defaults to 1 if there is no component 4)
+                if (prop_type == 5):
+                    if len(components) < 4:
+                        alpha = 1
+                    else:
+                        alpha = components[3]
+                    property_dict[prop_name].append({"red": components[0],
+                                                     "green": components[1],
+                                                     "blue": components[2]})
+
+            elif (prop_type in (0, 1, 3, 4, 10)):
+
+                if prop_name not in property_dict:
+                    property_dict[prop_name] = None
+
+                # Type_String
+                if (prop_type in (0, 4)):
+                    wide_string_len = self.__read_unsigned_int32()
+                    wide_string_value = self.__read_string(2 * wide_string_len)
+                    property_dict[prop_name] = wide_string_value
+
+                # Type_Boolean
+                elif (prop_type == 1):
+                    boolean_value = bool(self.__read_unsigned_int32())
+                    property_dict[prop_name] = boolean_value
+
+                # Type_Integer
+                elif (prop_type == 3):
+                    integer_value = self.__read_signed_int32()
+                    property_dict[prop_name] = integer_value
+
+                # Type_Choice
+                elif (prop_type == 10):
+                    choice_value = self.__read_signed_int32()
+                    property_dict[prop_name] = choice_value
+
+            else:
+                sys.exit("Error: invalid property type: %d" % prop_type)
 
             #print("%d/%d" % (self.__bytesread - chunkstart, chunklen))
 
-        if property_list:
+        if property_dict:
             if entity_classname not in self.__entity_properties:
-                self.__entity_properties[entity_classname] = property_list
-            elif set(self.__entity_properties[entity_classname]) != set(property_list):
-                sys.exit("Error: inconsistent entity properties")
+                self.__entity_properties[entity_classname] = []
+            self.__entity_properties[entity_classname].append(property_dict)
 
     def __read_chunk_mesh(self, chunkid, chunkstart, chunklen):
 
@@ -294,8 +320,9 @@ class LevelFileReader:
                 for j in range(num_indices):
                     index = self.__read_unsigned_int32()
 
-        # Skip this chunk
+        # Skip unrecognized chunks
         else:
+            self.__skipped_chunks_count += 1
             print("Warning: unknown mesh chunk id: %d" % (chunkid))
             data = self.__read_bytes(chunklen)
 
@@ -328,21 +355,22 @@ class LevelFileReader:
               "\" (version " + str(self.__version) + ")")
 
         while self.__bytesread < len(self.__level_data):
-
             try:
                 chunkid = self.__read_unsigned_int32()
+                chunklen = self.__read_unsigned_int32()
+                chunkstart = self.__bytesread
+                self.__read_chunk(chunkid, chunkstart, chunklen)
             except ReadError as e:
                 sys.exit("Error: unexpected end of file!")
 
-            chunklen = self.__read_unsigned_int32()
+        if self.__skipped_chunks_count > 0:
+            print("Warning: skipped %d unrecognized chunks" %
+                  (self.__skipped_chunks_count))
 
-            chunkstart = self.__bytesread
-
-            self.__read_chunk(chunkid, chunkstart, chunklen)
-
-        print("success!")
-
-        #pprint.pprint(self.__entity_properties)
+        entity_count = 0
+        for entity_classname, entities in self.__entity_properties.iteritems():
+            entity_count += len(entities)
+        print("Loaded %d entities." % entity_count)
 
 
 def main(args):
