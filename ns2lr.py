@@ -207,8 +207,6 @@ class LevelFileReader:
             else:
                 sys.exit("Error: invalid property type: %d" % prop_type)
 
-            #print("%d/%d" % (self.__bytesread - chunkstart, chunklen))
-
         if property_dict:
             if entity_classname not in self.__entity_properties:
                 self.__entity_properties[entity_classname] = []
@@ -327,18 +325,52 @@ class LevelFileReader:
             data = self.__read_bytes(chunklen)
 
     def __read_chunk_layers(self, chunkstart, chunklen):
-        data = self.__read_bytes(chunklen)
+        num_layers = self.__read_unsigned_int32()
+        for i in range(num_layers):
+            wide_string_len = self.__read_unsigned_int32()
+            layer_name = self.__read_string(2 * wide_string_len)
+            is_visible = bool(self.__read_unsigned_int32())
+            red = self.__read_unsigned_char8()
+            green = self.__read_unsigned_char8()
+            blue = self.__read_unsigned_char8()
+            alpha = self.__read_unsigned_char8()
+            color = {"red": red, "green": green, "blue": blue, "alpha": alpha}
+            layer_id = self.__read_unsigned_int32()
 
     def __read_chunk_viewports(self, chunkstart, chunklen):
-        data = self.__read_bytes(chunklen)
+        wide_string_len = self.__read_unsigned_int32()
+        viewports_xml = self.__read_bytes(2 * wide_string_len)
 
     def __read_chunk_groups(self, chunkstart, chunklen):
-        data = self.__read_bytes(chunklen)
+        num_groups = self.__read_unsigned_int32()
+        for i in range(num_groups):
+            wide_string_len = self.__read_unsigned_int32()
+            group_name = self.__read_string(2 * wide_string_len)
+            is_visible = bool(self.__read_unsigned_int32())
+            red = self.__read_unsigned_char8()
+            green = self.__read_unsigned_char8()
+            blue = self.__read_unsigned_char8()
+            alpha = self.__read_unsigned_char8()
+            color = {"red": red, "green": green, "blue": blue, "alpha": alpha}
+            group_id = self.__read_unsigned_int32()
+
 
     def __read_chunk_customcolors(self, chunkstart, chunklen):
-        data = self.__read_bytes(chunklen)
+        num_colors = self.__read_unsigned_int32()
+        for i in range(num_colors):
+            red = self.__read_unsigned_char8()
+            green = self.__read_unsigned_char8()
+            blue = self.__read_unsigned_char8()
+            alpha = self.__read_unsigned_char8()
+            color = {"red": red, "green": green, "blue": blue, "alpha": alpha}
 
     def __read_chunk_editorsettings(self, chunkstart, chunklen):
+        #joku_id_kait = self.__read_unsigned_int32()
+        #joku_pituus_kait = self.__read_unsigned_int32()
+        #data = self.__read_unsigned_int32()
+        #num_settings = self.__read_unsigned_int32()
+        #wide_string_len = self.__read_unsigned_int32()
+        #joku_name = self.__read_string(2 * wide_string_len)
         data = self.__read_bytes(chunklen)
 
     def read_level(self):
@@ -371,6 +403,8 @@ class LevelFileReader:
         for entity_classname, entities in self.__entity_properties.iteritems():
             entity_count += len(entities)
         print("Loaded %d entities." % entity_count)
+
+
 
 
 def main(args):
