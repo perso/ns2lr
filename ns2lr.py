@@ -367,10 +367,18 @@ class LevelFileReader:
 
     def __read_chunk_editorsettings(self, chunkstart, chunklen):
 
+        print("Chunklen: %d" % (chunklen))
+
         # Unknown
-        for i in range(4):
-            data = self.__read_unsigned_int32()
-            print(data)
+        editorsettings_chunkid = self.__read_unsigned_int32()
+        editorsettings_chunklen = self.__read_unsigned_int32()
+        joku_value_3 = self.__read_unsigned_int32()
+        joku_value_4 = self.__read_unsigned_int32()
+
+        print("editorsettings_chunkid: %d" % (editorsettings_chunkid))
+        print("editorsettings_chunklen: %d" % (editorsettings_chunklen))
+        print("joku_value_3: %d" % (joku_value_3))
+        print("joku_value_4: %d" % (joku_value_4))
 
         wide_string_len = self.__read_unsigned_int32()
         wide_string_value = self.__read_string(2 * wide_string_len)
