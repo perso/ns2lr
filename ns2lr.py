@@ -336,6 +336,7 @@ class LevelFileReader:
             alpha = self.__read_unsigned_char8()
             color = {"red": red, "green": green, "blue": blue, "alpha": alpha}
             layer_id = self.__read_unsigned_int32()
+            #print("%d: %s" % (layer_id, layer_name))
 
     def __read_chunk_viewports(self, chunkstart, chunklen):
         wide_string_len = self.__read_unsigned_int32()
@@ -365,13 +366,36 @@ class LevelFileReader:
             color = {"red": red, "green": green, "blue": blue, "alpha": alpha}
 
     def __read_chunk_editorsettings(self, chunkstart, chunklen):
-        #joku_id_kait = self.__read_unsigned_int32()
-        #joku_pituus_kait = self.__read_unsigned_int32()
-        #data = self.__read_unsigned_int32()
-        #num_settings = self.__read_unsigned_int32()
-        #wide_string_len = self.__read_unsigned_int32()
-        #joku_name = self.__read_string(2 * wide_string_len)
-        data = self.__read_bytes(chunklen)
+
+        # Unknown
+        for i in range(4):
+            data = self.__read_unsigned_int32()
+            print(data)
+
+        wide_string_len = self.__read_unsigned_int32()
+        wide_string_value = self.__read_string(2 * wide_string_len)
+        print(wide_string_value)
+
+        # Unknown
+        for i in range(10):
+            data = self.__read_unsigned_int32()
+            print(data)
+
+        prop_chunk_len = self.__read_unsigned_int32()
+        print("prop_chunk_len: %d" % (prop_chunk_len))
+
+        while ((self.__bytesread - chunkstart) < chunklen):
+
+            prop_chunkid = self.__read_unsigned_int32()
+            if self.__version == 10 and (prop_chunkid != 2):
+                continue
+            prop_chunklen = self.__read_unsigned_int32()
+            wide_string_len = self.__read_unsigned_int32()
+            wide_string_value = self.__read_bytes(wide_string_len)
+            prop_type = self.__read_unsigned_int32()
+            num_components = self.__read_unsigned_int32()
+            is_animated = bool(self.__read_unsigned_int32())
+            prop_value = self.__read_float32()
 
     def read_level(self):
         with open(self.__filename, "rb") as f:
