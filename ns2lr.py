@@ -5,7 +5,7 @@ import os
 import sys
 import pprint
 
-from levelfilereader import LevelFileReader
+from levelreader import LevelReader
 
 def main(args):
     if len(args) < 2:
@@ -14,7 +14,7 @@ def main(args):
         sys.exit("Error: file %s was not found!" % (sys.argv[1]))
     filename = sys.argv[1]
 
-    reader = LevelFileReader(filename)
+    reader = LevelReader(filename)
     reader.read_level()
 
 
