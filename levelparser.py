@@ -1,4 +1,5 @@
 import sys
+import os
 import pprint
 from binaryparser import BinaryParser
 from errors import ReadError
@@ -8,8 +9,16 @@ class LevelParser(BinaryParser):
         self.filename = filename
         self.version = 0
         self.skipped_chunks_count = 0
-        self.materials = []
+
         self.entities = []
+        self.vertices = []
+        self.edges = []
+        self.faces = []
+        self.materials = []
+        self.ghost_vertices = []
+        self.smoothed_normals = []
+        self.triangles = []
+
         with open(self.filename, "rb") as f:
             level_data = f.read()
         super(LevelParser, self).__init__(level_data)
@@ -44,27 +53,27 @@ class LevelParser(BinaryParser):
 
     def read_chunk(self):
 
-        chunkid = self.read_unsigned_int32()
+        chunk_id = self.read_unsigned_int32()
         chunk_length = self.read_unsigned_int32()
         chunk_start = self.fp
 
-        if chunkid == 1:
+        if chunk_id == 1:
             self.parse_chunk_object(chunk_start, chunk_length)
-        elif chunkid == 2:
+        elif chunk_id == 2:
             self.parse_chunk_mesh(chunk_start, chunk_length)
-        elif chunkid == 3:
+        elif chunk_id == 3:
             self.parse_chunk_layers(chunk_start, chunk_length)
-        elif chunkid == 4:
+        elif chunk_id == 4:
             self.parse_chunk_viewport(chunk_start, chunk_length)
-        elif chunkid == 5:
+        elif chunk_id == 5:
             self.parse_chunk_groups(chunk_start, chunk_length)
-        elif chunkid == 6:
+        elif chunk_id == 6:
             self.parse_chunk_customcolors(chunk_start, chunk_length)
-        elif chunkid == 7:
+        elif chunk_id == 7:
             self.parse_chunk_editorsettings(chunk_start, chunk_length)
         else:
-            sys.exit("Error: unknown chunk id: %d" % (chunkid))
             data = self.read_bytes(chunk_length)
+            sys.exit("Error: unknown chunk id: %d" % (chunk_id))
         chunk_bytes_read = self.fp - chunk_start
         chunk_bytes_left = chunk_length - chunk_bytes_read
         if chunk_bytes_left != 0:
@@ -232,34 +241,52 @@ class LevelParser(BinaryParser):
         num_vertices = self.read_unsigned_int32()
         for i in range(num_vertices):
             vec3 = self.read_vec3_float32()
-            smoothing = bool(self.read_unsigned_char8())
+            has_smoothing = bool(self.read_unsigned_char8())
+            self.vertices.append({
+                "point": {"x": vec3[0], "y": vec3[1], "z": vec3[2]},
+                "has_smoothing": has_smoothing
+            })
 
     def parse_chunk_edges(self, chunk_start, chunk_length):
         num_edges = self.read_unsigned_int32()
+        print(num_edges)
         for i in range(num_edges):
             vi_1 = self.read_unsigned_int32()
             vi_2 = self.read_unsigned_int32()
             is_flipped = bool(self.read_unsigned_char8())
+            self.edges.append({
+                "vi_1": vi_1,
+                "vi_2": vi_2,
+                "is_flipped": is_flipped
+            })
 
     def parse_chunk_faces(self, chunk_start, chunk_length):
         num_faces = self.read_unsigned_int32()
         for i in range(num_faces):
-            angle = self.read_float32()
-            offset = self.read_vec2_float32()
-            scale = self.read_vec2_float32()
-            mapping_group_id = self.read_unsigned_int32()
-            materialid = self.read_unsigned_int32()
-            additional_edgeloops = self.read_unsigned_int32()
-            # account for border edgeloop
-            for j in range(1 + additional_edgeloops):
+            face = {}
+            face["angle"] = self.read_float32()
+            face["offset"] = self.read_vec2_float32()
+            face["scale"] = self.read_vec2_float32()
+            face["mapping_group_id"] = self.read_unsigned_int32()
+            face["materialid"] = self.read_unsigned_int32()
+            face["edgeloops"] = []
+            num_additional_edgeloops = self.read_unsigned_int32()
+            # border edge loop is always the first edge loop
+            for j in range(1 + num_additional_edgeloops):
+                face["edgeloops"].append([])
                 num_edges = self.read_unsigned_int32()
                 for k in range(num_edges):
                     is_flipped = bool(self.read_unsigned_int32())
                     edge_index = self.read_unsigned_int32()
+                    face["edgeloops"][j].append({
+                        "edge_index": edge_index,
+                        "is_flipped": is_flipped
+                    })
+            self.faces.append(face)
 
     def parse_chunk_materials(self, chunk_start, chunk_length):
-        nummaterials = self.read_unsigned_int32()
-        for i in range(nummaterials):
+        num_materials = self.read_unsigned_int32()
+        for i in range(num_materials):
             num_chars = self.read_unsigned_int32()
             material = self.read_string(num_chars)
             self.materials.append(material)
@@ -268,12 +295,15 @@ class LevelParser(BinaryParser):
         num_ghost_vertices = self.read_unsigned_int32()
         for i in range(num_ghost_vertices):
             ghost_vertex = self.read_vec3_float32()
+            self.ghost_vertices.append(ghost_vertex)
         num_smoothed_normals = self.read_unsigned_int32()
         for i in range(num_smoothed_normals):
             smoothed_normal = self.read_vec3_float32()
+            self.smoothed_normals.append(smoothed_normal)
         num_faces = self.read_unsigned_int32()
         num_triangles = self.read_unsigned_int32()
         for i in range(num_faces):
+            self.triangles.append([])
             num_face_triangles = self.read_unsigned_int32()
             for j in range(num_face_triangles):
                 vertex_index1 = self.read_unsigned_int32()
@@ -282,6 +312,14 @@ class LevelParser(BinaryParser):
                 smoothed_normal_index1 = self.read_unsigned_int32()
                 smoothed_normal_index2 = self.read_unsigned_int32()
                 smoothed_normal_index3 = self.read_unsigned_int32()
+                self.triangles[i].append({
+                    "vi_1": vertex_index1,
+                    "vi_2": vertex_index2,
+                    "vi_3": vertex_index3,
+                    "sni_1": smoothed_normal_index1,
+                    "sni_2": smoothed_normal_index2,
+                    "sni_3": smoothed_normal_index3
+                })
 
     def parse_chunk_facelayers(self, chunk_start, chunk_length):
         num_facelayers = self.read_unsigned_int32()
@@ -328,6 +366,19 @@ class LevelParser(BinaryParser):
         wide_string_len = self.read_unsigned_int32()
         viewports_xml = self.read_bytes(2 * wide_string_len)
 
+    def parse_chunk_groups(self, chunk_start, chunk_length):
+        num_groups = self.read_unsigned_int32()
+        for i in range(num_groups):
+            wide_string_len = self.read_unsigned_int32()
+            group_name = self.read_string(2 * wide_string_len)
+            is_visible = bool(self.read_unsigned_int32())
+            color = self.read_color()
+            c = {
+                "red": color[0], "green": color[1],
+                "blue": color[2], "alpha": color[3]
+            }
+            group_id = self.read_unsigned_int32()
+
     def parse_chunk_layers(self, chunk_start, chunk_length):
         num_layers = self.read_unsigned_int32()
         for i in range(num_layers):
@@ -350,19 +401,6 @@ class LevelParser(BinaryParser):
                 "red": color[0], "green": color[1],
                 "blue": color[2], "alpha": color[3]
             })
-
-    def parse_chunk_groups(self, chunk_start, chunk_length):
-        num_groups = self.read_unsigned_int32()
-        for i in range(num_groups):
-            wide_string_len = self.read_unsigned_int32()
-            group_name = self.read_string(2 * wide_string_len)
-            is_visible = bool(self.read_unsigned_int32())
-            color = self.read_color()
-            c = {
-                "red": color[0], "green": color[1],
-                "blue": color[2], "alpha": color[3]
-            }
-            group_id = self.read_unsigned_int32()
 
     def parse_chunk_editorsettings(self, chunk_start, chunk_length):
         unknown_field_1 = self.read_unsigned_int32()
