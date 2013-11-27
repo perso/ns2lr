@@ -26,8 +26,7 @@ class LevelParser(BinaryParser):
 
         while self.fp < len(self.data):
             try:
-                chunkid = self.read_unsigned_int32()
-                self.read_chunk(chunkid)
+                self.read_chunk()
             except ReadError as e:
                 sys.exit("Error: unexpected end of file!")
 
@@ -43,8 +42,9 @@ class LevelParser(BinaryParser):
     def parse_version(self):
         return self.read_unsigned_char8()
 
-    def read_chunk(self, chunkid):
+    def read_chunk(self):
 
+        chunkid = self.read_unsigned_int32()
         chunk_length = self.read_unsigned_int32()
         chunk_start = self.fp
 
