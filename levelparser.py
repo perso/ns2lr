@@ -24,7 +24,7 @@ class LevelParser(BinaryParser):
         print("Reading level \"" + self.filename +
               "\" (version " + str(self.version) + ")")
 
-        while self.bytes_read < len(self.data):
+        while self.fp < len(self.data):
             try:
                 chunkid = self.read_unsigned_int32()
                 self.read_chunk(chunkid)
@@ -46,7 +46,7 @@ class LevelParser(BinaryParser):
     def read_chunk(self, chunkid):
 
         chunk_length = self.read_unsigned_int32()
-        chunk_start = self.bytes_read
+        chunk_start = self.fp
 
         if chunkid == 1:
             self.parse_chunk_object(chunk_start, chunk_length)
@@ -65,7 +65,7 @@ class LevelParser(BinaryParser):
         else:
             sys.exit("Error: unknown chunk id: %d" % (chunkid))
             data = self.read_bytes(chunk_length)
-        chunk_bytes_read = self.bytes_read - chunk_start
+        chunk_bytes_read = self.fp - chunk_start
         chunk_bytes_left = chunk_length - chunk_bytes_read
         if chunk_bytes_left != 0:
             sys.exit("Error: read %d bytes, should be %d bytes" %
@@ -91,7 +91,7 @@ class LevelParser(BinaryParser):
         if self.version == 10:
             num_properties = self.read_unsigned_int32()
 
-        while ((self.bytes_read - chunk_start) < chunk_length):
+        while ((self.fp - chunk_start) < chunk_length):
 
             prop_chunkid = self.read_unsigned_int32()
             if self.version == 10 and (prop_chunkid != 2):
@@ -201,11 +201,11 @@ class LevelParser(BinaryParser):
 
         chunk = self.data[chunk_start:chunk_start+chunk_length]
 
-        while ((self.bytes_read - chunk_start) < chunk_length):
+        while ((self.fp - chunk_start) < chunk_length):
 
             chunkid = self.read_unsigned_int32()
             chunklen = self.read_unsigned_int32()
-            chunkstart = self.bytes_read
+            chunkstart = self.fp
 
             if chunkid == 1:
                 self.parse_chunk_vertices(chunk_start, chunk_length)
@@ -376,7 +376,7 @@ class LevelParser(BinaryParser):
             number = self.read_unsigned_int32()
         prop_chunk_id = self.read_unsigned_int32()
         prop_chunk_len = self.read_unsigned_int32()
-        while ((self.bytes_read - chunk_start) < chunk_length):
+        while ((self.fp - chunk_start) < chunk_length):
             prop_chunkid = self.read_unsigned_int32()
             #if self.version == 10 and (prop_chunkid != 2):
             #    continue

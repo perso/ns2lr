@@ -5,7 +5,7 @@ class BinaryParser(object):
 
     def __init__(self, data):
         self.data = data
-        self.bytes_read = 0
+        self.fp = 0
 
     def read_unsigned_char8(self):
         data = self.read_bytes(1)
@@ -40,10 +40,10 @@ class BinaryParser(object):
         return unpack('BBBB', data)
 
     def read_bytes(self, n):
-        data = self.data[self.bytes_read:self.bytes_read+n]
+        data = self.data[self.fp:self.fp+n]
         if len(data) < n:
             raise ReadError(
                 "Error: expected %d bytes, read %d" % (n, len(data)))
         else:
-            self.bytes_read += n
+            self.fp += n
             return data
