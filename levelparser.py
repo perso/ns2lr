@@ -212,30 +212,30 @@ class LevelParser(BinaryParser):
 
         while ((self.fp - chunk_start) < chunk_length):
 
-            chunkid = self.read_unsigned_int32()
-            chunklen = self.read_unsigned_int32()
-            chunkstart = self.fp
+            mesh_chunk_id = self.read_unsigned_int32()
+            mesh_chunk_length = self.read_unsigned_int32()
+            mesh_chunk_start = self.fp
 
-            if chunkid == 1:
-                self.parse_chunk_vertices(chunk_start, chunk_length)
-            elif chunkid == 2:
-                self.parse_chunk_edges(chunk_start, chunk_length)
-            elif chunkid == 3:
-                self.parse_chunk_faces(chunk_start, chunk_length)
-            elif chunkid == 4:
-                self.parse_chunk_materials(chunk_start, chunk_length)
-            elif chunkid == 5:
-                self.parse_chunk_triangles(chunk_start, chunk_length)
-            elif chunkid == 6:
-                self.parse_chunk_facelayers(chunk_start, chunk_length)
-            elif chunkid == 7:
-                self.parse_chunk_mappinggroups(chunk_start, chunk_length)
-            elif chunkid == 8:
-                self.parse_chunk_geometrygroups(chunk_start, chunk_length)
+            if mesh_chunk_id == 1:
+                self.parse_chunk_vertices(mesh_chunk_start, mesh_chunk_length)
+            elif mesh_chunk_id == 2:
+                self.parse_chunk_edges(mesh_chunk_start, mesh_chunk_length)
+            elif mesh_chunk_id == 3:
+                self.parse_chunk_faces(mesh_chunk_start, mesh_chunk_length)
+            elif mesh_chunk_id == 4:
+                self.parse_chunk_materials(mesh_chunk_start, mesh_chunk_length)
+            elif mesh_chunk_id == 5:
+                self.parse_chunk_triangles(mesh_chunk_start, mesh_chunk_length)
+            elif mesh_chunk_id == 6:
+                self.parse_chunk_facelayers(mesh_chunk_start, mesh_chunk_length)
+            elif mesh_chunk_id == 7:
+                self.parse_chunk_mappinggroups(mesh_chunk_start, mesh_chunk_length)
+            elif mesh_chunk_id == 8:
+                self.parse_chunk_geometrygroups(mesh_chunk_start, mesh_chunk_length)
             else:
                 self.skipped_chunks_count += 1
-                print("Warning: unknown mesh chunk id: %d" % (chunkid))
-                data = self.read_bytes(chunklen)
+                print("Warning: unknown mesh chunk id: %d" % (mesh_chunk_id))
+                data = self.read_bytes(mesh_chunk_length)
 
     def parse_chunk_vertices(self, chunk_start, chunk_length):
         num_vertices = self.read_unsigned_int32()
@@ -249,7 +249,6 @@ class LevelParser(BinaryParser):
 
     def parse_chunk_edges(self, chunk_start, chunk_length):
         num_edges = self.read_unsigned_int32()
-        print(num_edges)
         for i in range(num_edges):
             vi_1 = self.read_unsigned_int32()
             vi_2 = self.read_unsigned_int32()
@@ -329,9 +328,11 @@ class LevelParser(BinaryParser):
         for i in range(num_facelayers):
             has_layers = bool(self.read_unsigned_int32())
             if has_layers:
+                self.facelayers.append([])
                 num_layerbitvalues = self.read_unsigned_int32()
                 for j in range(num_layerbitvalues):
                     bitmask = self.read_unsigned_int32()
+                    self.facelayers[i].append(bitmask)
 
     def parse_chunk_mappinggroups(self, chunk_start, chunk_length):
         num_mappinggroups = self.read_unsigned_int32()
