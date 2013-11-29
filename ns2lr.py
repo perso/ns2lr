@@ -13,8 +13,8 @@ def main(args):
     if not os.path.exists(sys.argv[1]):
         sys.exit("Error: file %s was not found!" % (sys.argv[1]))
     filename = sys.argv[1]
-    reader = LevelReader(filename)
-    reader.read_level()
+    reader = LevelReader()
+    reader.read_level(filename)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

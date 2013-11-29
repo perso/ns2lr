@@ -1,3 +1,7 @@
+from struct import *
+import pprint
+
+from errors import ReadError
 from levelparser import LevelParser
 
 class LevelReader(object):
@@ -13,7 +17,6 @@ class LevelReader(object):
         parser.parse()
         for entity in parser.entities:
             self.entities.append(Entity(classname=entity["classname"]))
-            #pprint.pprint(entity["properties"])
 
 class Entity(object):
 
