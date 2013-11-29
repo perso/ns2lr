@@ -1,7 +1,7 @@
 import sys
 import os
 from binaryparser import BinaryParser
-from errors import ReadError
+from errors import IOError
 
 from chunkobjectparser import ChunkObjectParser
 from chunkmeshparser import ChunkMeshParser
@@ -10,33 +10,15 @@ from chunkviewportparser import ChunkViewportParser
 from chunkgroupsparser import ChunkGroupsParser
 from chunkcustomcolorsparser import ChunkCustomColorsParser
 from chunkeditorsettingsparser import ChunkEditorSettingsParser
+import errors
+
 
 class LevelParser(BinaryParser):
     def __init__(self, filename):
 
         self.filename = filename
         self.version = 0
-        self.skipped_chunks_count = 0
-
-        self.viewport_xml = ""
-        self.editor_settings_data = ""
-
         self.entities = []
-        self.vertices = []
-        self.edges = []
-        self.faces = []
-        self.materials = []
-        self.ghost_vertices = []
-        self.smoothed_normals = []
-        self.facelayers = []
-        self.customcolors = []
-
-        self.mappinggroups = {}
-        self.vertexgroups = {}
-        self.edgegroups = {}
-        self.facegroups = {}
-        self.groups = {}
-        self.layers = {}
 
         with open(self.filename, "rb") as f:
             level_data = f.read()
@@ -45,8 +27,7 @@ class LevelParser(BinaryParser):
     def parse(self):
         magicnumber = self.parse_magic_number()
         if magicnumber != "LVL":
-            sys.exit("Error: file '%s' is not a level file" %
-                    (os.path.basename(self.filename)))
+            raise errors.TypeError("Error: file '%s' is not a level file" % (os.path.basename(self.filename)))
 
         self.version = self.parse_version()
         print("Reading level \"" + self.filename +
@@ -55,12 +36,8 @@ class LevelParser(BinaryParser):
         while self.fp < len(self.data):
             try:
                 self.read_chunk()
-            except ReadError as e:
-                sys.exit("Error: unexpected end of file!")
-
-        if self.skipped_chunks_count > 0:
-            print("Warning: skipped %d unrecognized chunks" %
-                  (self.skipped_chunks_count))
+            except IOError as e:
+                raise
 
         print("Loaded %d entities." % len(self.entities))
 
@@ -99,9 +76,9 @@ class LevelParser(BinaryParser):
             parser = ChunkEditorSettingsParser(chunk, self.version)
             parser.parse()
         else:
-            sys.exit("Error: unknown chunk id: %d" % (chunk_id))
+            raise errors.ParseError("Error: unknown chunk id: %d" % (chunk_id))
+
         chunk_bytes_read = self.fp - chunk_start
         chunk_bytes_left = chunk_length - chunk_bytes_read
         if chunk_bytes_left != 0:
-            sys.exit("Error: read %d bytes, should be %d bytes" %
-                    (chunk_bytes_read, chunk_length))
+            raise errors.ParseError("Error: read %d bytes, should be %d bytes" % (chunk_bytes_read, chunk_length))

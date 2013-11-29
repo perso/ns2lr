@@ -1,3 +1,4 @@
+import errors
 from binaryparser import BinaryParser
 
 
@@ -33,35 +34,36 @@ class ChunkMeshParser(BinaryParser):
 
             mesh_chunk_id = self.read_unsigned_int32()
             mesh_chunk_length = self.read_unsigned_int32()
-            mesh_chunk_start = self.fp
+            mesh_chunk = self.read_bytes(mesh_chunk_length)
 
             if mesh_chunk_id == 1:
-                self.parse_chunk_vertices(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_vertices(mesh_chunk)
             elif mesh_chunk_id == 2:
-                self.parse_chunk_edges(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_edges(mesh_chunk)
             elif mesh_chunk_id == 3:
-                self.parse_chunk_faces(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_faces(mesh_chunk)
             elif mesh_chunk_id == 4:
-                self.parse_chunk_materials(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_materials(mesh_chunk)
             elif mesh_chunk_id == 5:
-                self.parse_chunk_triangles(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_triangles(mesh_chunk)
             elif mesh_chunk_id == 6:
-                self.parse_chunk_facelayers(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_facelayers(mesh_chunk)
             elif mesh_chunk_id == 7:
-                self.parse_chunk_mappinggroups(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_mappinggroups(mesh_chunk)
             elif mesh_chunk_id == 8:
-                self.parse_chunk_geometrygroups(mesh_chunk_start, mesh_chunk_length)
+                self.parse_chunk_geometrygroups(mesh_chunk)
             else:
-                self.skipped_chunks_count += 1
                 print("Warning: unknown mesh chunk id: %d" % (mesh_chunk_id))
                 data = self.read_bytes(mesh_chunk_length)
 
-    def parse_chunk_vertices(self, chunk_start, chunk_length):
-        num_vertices = self.read_unsigned_int32()
+    def parse_chunk_vertices(self, chunk):
+        parser = BinaryParser(chunk)
+        vertices = []
+        num_vertices = parser.read_unsigned_int32()
         for i in range(num_vertices):
-            vec3 = self.read_vec3_float32()
-            has_smoothing = bool(self.read_unsigned_char8())
-            self.vertices.append({
+            vec3 = parser.read_vec3_float32()
+            has_smoothing = bool(parser.read_unsigned_char8())
+            vertices.append({
                 "point": {
                     "x": vec3[0],
                     "y": vec3[1],
@@ -69,71 +71,86 @@ class ChunkMeshParser(BinaryParser):
                 },
                 "has_smoothing": has_smoothing
             })
+        return vertices
 
-    def parse_chunk_edges(self, chunk_start, chunk_length):
-        num_edges = self.read_unsigned_int32()
+    def parse_chunk_edges(self, chunk):
+        parser = BinaryParser(chunk)
+        edges = []
+        num_edges = parser.read_unsigned_int32()
         for i in range(num_edges):
-            vi_1 = self.read_unsigned_int32()
-            vi_2 = self.read_unsigned_int32()
-            is_flipped = bool(self.read_unsigned_char8())
-            self.edges.append({
+            vi_1 = parser.read_unsigned_int32()
+            vi_2 = parser.read_unsigned_int32()
+            is_flipped = bool(parser.read_unsigned_char8())
+            edges.append({
                 "vi_1": vi_1,
                 "vi_2": vi_2,
                 "is_flipped": is_flipped
             })
+        return edges
 
-    def parse_chunk_faces(self, chunk_start, chunk_length):
-        num_faces = self.read_unsigned_int32()
+    def parse_chunk_faces(self, chunk):
+        parser = BinaryParser(chunk)
+        faces = []
+        num_faces = parser.read_unsigned_int32()
         for i in range(num_faces):
             face = {}
-            face["angle"] = self.read_float32()
-            face["offset"] = self.read_vec2_float32()
-            face["scale"] = self.read_vec2_float32()
-            face["mapping_group_id"] = self.read_unsigned_int32()
-            face["materialid"] = self.read_unsigned_int32()
+            face["angle"] = parser.read_float32()
+            face["offset"] = parser.read_vec2_float32()
+            face["scale"] = parser.read_vec2_float32()
+            face["mapping_group_id"] = parser.read_unsigned_int32()
+            face["materialid"] = parser.read_unsigned_int32()
             face["edgeloops"] = []
-            num_additional_edgeloops = self.read_unsigned_int32()
+            num_additional_edgeloops = parser.read_unsigned_int32()
             # border edge loop is always the first edge loop
             for j in range(1 + num_additional_edgeloops):
                 face["edgeloops"].append([])
-                num_edges = self.read_unsigned_int32()
+                num_edges = parser.read_unsigned_int32()
                 for k in range(num_edges):
-                    is_flipped = bool(self.read_unsigned_int32())
-                    edge_index = self.read_unsigned_int32()
+                    is_flipped = bool(parser.read_unsigned_int32())
+                    edge_index = parser.read_unsigned_int32()
                     face["edgeloops"][j].append({
                         "edge_index": edge_index,
                         "is_flipped": is_flipped
                     })
-            self.faces.append(face)
+            faces.append(face)
+        return faces
 
-    def parse_chunk_materials(self, chunk_start, chunk_length):
-        num_materials = self.read_unsigned_int32()
+    def parse_chunk_materials(self, chunk):
+        parser = BinaryParser(chunk)
+        materials = []
+        num_materials = parser.read_unsigned_int32()
         for i in range(num_materials):
-            num_chars = self.read_unsigned_int32()
-            material = self.read_string(num_chars)
-            self.materials.append(material)
+            num_chars = parser.read_unsigned_int32()
+            material = parser.read_string(num_chars)
+            materials.append(material)
+        return materials
 
-    def parse_chunk_triangles(self, chunk_start, chunk_length):
-        num_ghost_vertices = self.read_unsigned_int32()
+    def parse_chunk_triangles(self, chunk):
+        parser = BinaryParser(chunk)
+        ghost_vertices = []
+        num_ghost_vertices = parser.read_unsigned_int32()
         for i in range(num_ghost_vertices):
-            ghost_vertex = self.read_vec3_float32()
-            self.ghost_vertices.append(ghost_vertex)
-        num_smoothed_normals = self.read_unsigned_int32()
+            ghost_vertex = parser.read_vec3_float32()
+            ghost_vertices.append(ghost_vertex)
+        smoothed_normals = []
+        num_smoothed_normals = parser.read_unsigned_int32()
         for i in range(num_smoothed_normals):
-            smoothed_normal = self.read_vec3_float32()
-            self.smoothed_normals.append(smoothed_normal)
-        num_faces = self.read_unsigned_int32()
-        num_triangles = self.read_unsigned_int32()
+            smoothed_normal = parser.read_vec3_float32()
+            smoothed_normals.append(smoothed_normal)
+        triangles = []
+        num_faces = parser.read_unsigned_int32()
+        num_triangles = parser.read_unsigned_int32()
         for i in range(num_faces):
-            num_face_triangles = self.read_unsigned_int32()
+            triangles.append({})
+            num_face_triangles = parser.read_unsigned_int32()
             for j in range(num_face_triangles):
-                vertex_index1 = self.read_unsigned_int32()
-                vertex_index2 = self.read_unsigned_int32()
-                vertex_index3 = self.read_unsigned_int32()
-                smoothed_normal_index1 = self.read_unsigned_int32()
-                smoothed_normal_index2 = self.read_unsigned_int32()
-                smoothed_normal_index3 = self.read_unsigned_int32()
-                self.faces[i]["triangles"] = {
+                vertex_index1 = parser.read_unsigned_int32()
+                vertex_index2 = parser.read_unsigned_int32()
+                vertex_index3 = parser.read_unsigned_int32()
+                smoothed_normal_index1 = parser.read_unsigned_int32()
+                smoothed_normal_index2 = parser.read_unsigned_int32()
+                smoothed_normal_index3 = parser.read_unsigned_int32()
+                triangles[i]["triangles"] = {
                     "vi_1": vertex_index1,
                     "vi_2": vertex_index2,
                     "vi_3": vertex_index3,
@@ -141,59 +158,71 @@ class ChunkMeshParser(BinaryParser):
                     "sni_2": smoothed_normal_index2,
                     "sni_3": smoothed_normal_index3
                 }
+        return (ghost_vertices, smoothed_normals, triangles)
 
-    def parse_chunk_facelayers(self, chunk_start, chunk_length):
-        num_facelayers = self.read_unsigned_int32()
-        format = self.read_unsigned_int32()
+    def parse_chunk_facelayers(self, chunk):
+        parser = BinaryParser(chunk)
+        facelayers = []
+        num_facelayers = parser.read_unsigned_int32()
+        format = parser.read_unsigned_int32()
         if format != 2:
-            sys.exit("Error: format is not 2")
+            raise errors.ParseError("Error: format is not 2")
         for i in range(num_facelayers):
-            self.facelayers.append([])
-            has_layers = bool(self.read_unsigned_int32())
+            facelayers.append([])
+            has_layers = bool(parser.read_unsigned_int32())
             if has_layers:
-                num_layerbitvalues = self.read_unsigned_int32()
+                num_layerbitvalues = parser.read_unsigned_int32()
                 for j in range(num_layerbitvalues):
-                    bitmask = self.read_unsigned_int32()
-                    self.facelayers[i].append(bitmask)
+                    bitmask = parser.read_unsigned_int32()
+                    facelayers[i].append(bitmask)
+        return facelayers
 
-    def parse_chunk_mappinggroups(self, chunk_start, chunk_length):
-        num_mappinggroups = self.read_unsigned_int32()
+    def parse_chunk_mappinggroups(self, chunk):
+        parser = BinaryParser(chunk)
+        mappinggroups = []
+        num_mappinggroups = parser.read_unsigned_int32()
         for i in range(num_mappinggroups):
-            mgid = self.read_unsigned_int32()
-            angle = self.read_float32()
-            scale = self.read_vec2_float32()
-            offset = self.read_vec2_float32()
-            normal = self.read_vec3_float32()
-            self.mappinggroups[mgid] = {
+            mgid = parser.read_unsigned_int32()
+            angle = parser.read_float32()
+            scale = parser.read_vec2_float32()
+            offset = parser.read_vec2_float32()
+            normal = parser.read_vec3_float32()
+            mappinggroups[mgid] = {
                 "angle": angle,
                 "scale": scale,
                 "offset": offset,
                 "normal": normal
             }
+        return mappinggroups
 
-    def parse_chunk_geometrygroups(self, chunk_start, chunk_length):
-        num_vertexgroups = self.read_unsigned_int32()
+    def parse_chunk_geometrygroups(self, chunk):
+        parser = BinaryParser(chunk)
+        vertexgroups = {}
+        num_vertexgroups = parser.read_unsigned_int32()
         for i in range(num_vertexgroups):
-            vgid = self.read_unsigned_int32()
-            self.vertexgroups[vgid] = []
-            num_indices = self.read_unsigned_int32()
+            vgid = parser.read_unsigned_int32()
+            vertexgroups[vgid] = []
+            num_indices = parser.read_unsigned_int32()
             for j in range(num_indices):
-                index = self.read_unsigned_int32()
-                self.vertexgroups[vgid].append(index)
-        num_edgegroups = self.read_unsigned_int32()
+                index = parser.read_unsigned_int32()
+                vertexgroups[vgid].append(index)
+        edgegroups = {}
+        num_edgegroups = parser.read_unsigned_int32()
         for i in range(num_edgegroups):
-            egid = self.read_unsigned_int32()
-            self.edgegroups[egid] = []
-            num_indices = self.read_unsigned_int32()
+            egid = parser.read_unsigned_int32()
+            edgegroups[egid] = []
+            num_indices = parser.read_unsigned_int32()
             for j in range(num_indices):
-                index = self.read_unsigned_int32()
-                self.edgegroups[egid].append(index)
-        num_facegroups = self.read_unsigned_int32()
+                index = parser.read_unsigned_int32()
+                edgegroups[egid].append(index)
+        facegroups = {}
+        num_facegroups = parser.read_unsigned_int32()
         for i in range(num_facegroups):
-            fgid = self.read_unsigned_int32()
-            self.facegroups[fgid] = []
-            num_indices = self.read_unsigned_int32()
+            fgid = parser.read_unsigned_int32()
+            facegroups[fgid] = []
+            num_indices = parser.read_unsigned_int32()
             for j in range(num_indices):
-                index = self.read_unsigned_int32()
-                self.facegroups[fgid].append(index)
+                index = parser.read_unsigned_int32()
+                facegroups[fgid].append(index)
+        return (vertexgroups, edgegroups, facegroups)
 

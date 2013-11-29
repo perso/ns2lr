@@ -48,7 +48,7 @@ class ChunkObjectParser(BinaryParser):
                     "roll": components[0]
                 }
             else:
-                sys.exit("Error: Type_Angle requires at least one component.")
+                raise errors.ParseError("Error: Type_Angle requires at least one component.")
         elif (prop_type == 5):
             if len(components) < 4:
                 alpha = 1

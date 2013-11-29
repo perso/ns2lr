@@ -1,5 +1,6 @@
 from struct import *
-from errors import ReadError
+from errors import IOError
+import errors
 
 
 class BinaryParser(object):
@@ -15,7 +16,7 @@ class BinaryParser(object):
         if pos >= 0 and pos < len(self.data):
             self.fp = pos
         else:
-            sys.exit("Error: unable to seek to position: %d" % pos)
+            raise errors.IOError("Error: unable to seek to position: %d" % pos)
 
     def read_unsigned_char8(self):
         data = self.read_bytes(1)
@@ -52,8 +53,7 @@ class BinaryParser(object):
     def read_bytes(self, n):
         data = self.data[self.fp:self.fp+n]
         if len(data) < n:
-            raise ReadError(
-                "Error: expected %d bytes, read %d" % (n, len(data)))
+            raise IOError("Error: expected %d bytes, read %d" % (n, len(data)))
         else:
             self.fp += n
             return data
