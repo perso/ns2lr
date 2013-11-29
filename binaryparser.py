@@ -7,6 +7,15 @@ class BinaryParser(object):
         self.data = data
         self.fp = 0
 
+    def end(self):
+        return (self.fp >= len(self.data))
+
+    def seek(self, pos):
+        if pos >= 0 and pos < len(self.data):
+            self.fp = pos
+        else:
+            sys.exit("Error: unable to seek to position: %d" % pos)
+
     def read_unsigned_char8(self):
         data = self.read_bytes(1)
         return unpack('B', data)[0]

@@ -1,14 +1,17 @@
 import sys
 import os
-import pprint
 from binaryparser import BinaryParser
 from errors import ReadError
 
 class LevelParser(BinaryParser):
     def __init__(self, filename):
+
         self.filename = filename
         self.version = 0
         self.skipped_chunks_count = 0
+
+        self.viewport_xml = ""
+        self.editor_settings_data = ""
 
         self.entities = []
         self.vertices = []
@@ -17,33 +20,34 @@ class LevelParser(BinaryParser):
         self.materials = []
         self.ghost_vertices = []
         self.smoothed_normals = []
-        self.triangles = []
+        self.facelayers = []
+        self.customcolors = []
+
+        self.mappinggroups = {}
+        self.vertexgroups = {}
+        self.edgegroups = {}
+        self.facegroups = {}
+        self.groups = {}
+        self.layers = {}
 
         with open(self.filename, "rb") as f:
             level_data = f.read()
         super(LevelParser, self).__init__(level_data)
 
     def parse(self):
+
         magicnumber = self.parse_magic_number()
-        if magicnumber != "LVL":
-            sys.exit("Error: file '%s' is not a level file" %
-                    (os.path.basename(self.filename)))
-
+        magicnumber == "LVL" or sys.exit("Error: file '%s' is not a level file" % (os.path.basename(self.filename)))
         self.version = self.parse_version()
-        print("Reading level \"" + self.filename +
-              "\" (version " + str(self.version) + ")")
-
-        while self.fp < len(self.data):
+        print("Reading level \"" + self.filename + "\" (version " + str(self.version) + ")")
+        while not self.end():
             try:
                 self.read_chunk()
             except ReadError as e:
                 sys.exit("Error: unexpected end of file!")
-
         if self.skipped_chunks_count > 0:
             print("Warning: skipped %d unrecognized chunks" %
                   (self.skipped_chunks_count))
-
-        print("Loaded %d entities." % len(self.entities))
 
     def parse_magic_number(self):
         return self.read_string(3)
@@ -52,11 +56,9 @@ class LevelParser(BinaryParser):
         return self.read_unsigned_char8()
 
     def read_chunk(self):
-
         chunk_id = self.read_unsigned_int32()
         chunk_length = self.read_unsigned_int32()
         chunk_start = self.fp
-
         if chunk_id == 1:
             self.parse_chunk_object(chunk_start, chunk_length)
         elif chunk_id == 2:
@@ -72,7 +74,7 @@ class LevelParser(BinaryParser):
         elif chunk_id == 7:
             self.parse_chunk_editorsettings(chunk_start, chunk_length)
         else:
-            data = self.read_bytes(chunk_length)
+            self.read_bytes(chunk_length)
             sys.exit("Error: unknown chunk id: %d" % (chunk_id))
         chunk_bytes_read = self.fp - chunk_start
         chunk_bytes_left = chunk_length - chunk_bytes_read
@@ -80,8 +82,7 @@ class LevelParser(BinaryParser):
             sys.exit("Error: read %d bytes, should be %d bytes" %
                     (chunk_bytes_read, chunk_length))
 
-    def parse_chunk_object(self, chunk_start, chunk_length):
-
+    def parse_layerdata(self):
         layerdata = {}
         has_layerdata = bool(self.read_unsigned_int32())
         if has_layerdata:
@@ -91,14 +92,60 @@ class LevelParser(BinaryParser):
             for i in range(num_layerbitvalues):
                 bitmask = self.read_unsigned_int32()
                 layerdata["bitvalues"].append(bitmask)
+        return layerdata
 
+    def parse_type_float(self, prop_type, num_components):
+        prop = None
+        components = []
+        for i in range(num_components):
+            if i < 4:
+                # Components beyond the fourth are ignored
+                component_value = self.read_float32()
+                components.append(component_value)
+        if (prop_type in (2, 6, 8, 9)):
+            prop = components[0]
+        elif (prop_type == 7):
+            if len(components) == 3:
+                prop = {
+                    "roll": components[0],
+                    "pitch": components[1],
+                    "yaw": components[2]
+                }
+            elif len(components) == 2:
+                prop = {
+                    "roll": components[0],
+                    "pitch": components[1]
+                }
+            elif len(components) == 1:
+                prop = {
+                    "roll": components[0]
+                }
+            else:
+                sys.exit("Error: Type_Angle requires at least one component.")
+        elif (prop_type == 5):
+            if len(components) < 4:
+                alpha = 1
+            else:
+                alpha = components[3]
+            prop = {
+                "red": components[0],
+                "green": components[1],
+                "blue": components[2],
+                "alpha": alpha
+            }
+        return prop
+
+    def parse_chunk_object(self, chunk_start, chunk_length):
+
+        layerdata = self.parse_layerdata()
         groupid = self.read_unsigned_int32()
         classname_len = self.read_unsigned_int32()
         classname = self.read_string(classname_len)
-        properties = {}
 
         if self.version == 10:
             num_properties = self.read_unsigned_int32()
+
+        properties = {}
 
         while ((self.fp - chunk_start) < chunk_length):
 
@@ -115,65 +162,9 @@ class LevelParser(BinaryParser):
             # Type_Float
             if (prop_type in (2, 5, 6, 7, 8, 9)):
 
-                if prop_name not in properties:
-                    properties[prop_name] = []
-
-                components = []
-
-                for i in range(num_components):
-                    if i < 4:
-                        # Components beyond the fourth are ignored
-                        component_value = self.read_float32()
-                        components.append(component_value)
-
-                # Next the components are assigned based on the type of
-                # property
-
-                # Type_Real, Type_Percentage, Type_Time, and Type_Distance use
-                # only the first component
-                if (prop_type in (2, 6, 8, 9)):
-                    properties[prop_name] = components[0]
-
-                # Type_Angle uses component 1 for roll, component 2 for pitch,
-                # and component 3 for yaw
-                if (prop_type == 7):
-
-                    if len(components) == 3:
-                        properties[prop_name].append({
-                            "roll": components[0],
-                            "pitch": components[1],
-                            "yaw": components[2]
-                        })
-                    elif len(components) == 2:
-                        properties[prop_name].append({
-                            "roll": components[0],
-                            "pitch": components[1]
-                        })
-                    elif len(components) == 1:
-                        properties[prop_name].append({
-                            "roll": components[0]
-                        })
-                    else:
-                        sys.exit("Error: Type_Angle requires at least one component.")
-
-                # Type_Color uses component 1 for red, component 2 for green,
-                # component 3 for blue, and component 4 for alpha
-                # (alpha defaults to 1 if there is no component 4)
-                if (prop_type == 5):
-                    if len(components) < 4:
-                        alpha = 1
-                    else:
-                        alpha = components[3]
-                    properties[prop_name].append({
-                        "red": components[0],
-                        "green": components[1],
-                        "blue": components[2]
-                    })
+                properties[prop_name] = self.parse_type_float(prop_type, num_components)
 
             elif (prop_type in (0, 1, 3, 4, 10)):
-
-                if prop_name not in properties:
-                    properties[prop_name] = None
 
                 # Type_String
                 if (prop_type in (0, 4)):
@@ -207,9 +198,7 @@ class LevelParser(BinaryParser):
         })
 
     def parse_chunk_mesh(self, chunk_start, chunk_length):
-
         chunk = self.data[chunk_start:chunk_start+chunk_length]
-
         while ((self.fp - chunk_start) < chunk_length):
 
             mesh_chunk_id = self.read_unsigned_int32()
@@ -235,7 +224,7 @@ class LevelParser(BinaryParser):
             else:
                 self.skipped_chunks_count += 1
                 print("Warning: unknown mesh chunk id: %d" % (mesh_chunk_id))
-                data = self.read_bytes(mesh_chunk_length)
+                self.read_bytes(mesh_chunk_length)
 
     def parse_chunk_vertices(self, chunk_start, chunk_length):
         num_vertices = self.read_unsigned_int32()
@@ -243,7 +232,11 @@ class LevelParser(BinaryParser):
             vec3 = self.read_vec3_float32()
             has_smoothing = bool(self.read_unsigned_char8())
             self.vertices.append({
-                "point": {"x": vec3[0], "y": vec3[1], "z": vec3[2]},
+                "point": {
+                    "x": vec3[0],
+                    "y": vec3[1],
+                    "z": vec3[2]
+                },
                 "has_smoothing": has_smoothing
             })
 
@@ -302,7 +295,6 @@ class LevelParser(BinaryParser):
         num_faces = self.read_unsigned_int32()
         num_triangles = self.read_unsigned_int32()
         for i in range(num_faces):
-            self.triangles.append([])
             num_face_triangles = self.read_unsigned_int32()
             for j in range(num_face_triangles):
                 vertex_index1 = self.read_unsigned_int32()
@@ -311,14 +303,14 @@ class LevelParser(BinaryParser):
                 smoothed_normal_index1 = self.read_unsigned_int32()
                 smoothed_normal_index2 = self.read_unsigned_int32()
                 smoothed_normal_index3 = self.read_unsigned_int32()
-                self.triangles[i].append({
+                self.faces[i]["triangles"] = {
                     "vi_1": vertex_index1,
                     "vi_2": vertex_index2,
                     "vi_3": vertex_index3,
                     "sni_1": smoothed_normal_index1,
                     "sni_2": smoothed_normal_index2,
                     "sni_3": smoothed_normal_index3
-                })
+                }
 
     def parse_chunk_facelayers(self, chunk_start, chunk_length):
         num_facelayers = self.read_unsigned_int32()
@@ -326,9 +318,9 @@ class LevelParser(BinaryParser):
         if format != 2:
             sys.exit("Error: format is not 2")
         for i in range(num_facelayers):
+            self.facelayers.append([])
             has_layers = bool(self.read_unsigned_int32())
             if has_layers:
-                self.facelayers.append([])
                 num_layerbitvalues = self.read_unsigned_int32()
                 for j in range(num_layerbitvalues):
                     bitmask = self.read_unsigned_int32()
@@ -342,30 +334,43 @@ class LevelParser(BinaryParser):
             scale = self.read_vec2_float32()
             offset = self.read_vec2_float32()
             normal = self.read_vec3_float32()
+            self.mappinggroups[mgid] = {
+                "angle": angle,
+                "scale": scale,
+                "offset": offset,
+                "normal": normal
+            }
 
     def parse_chunk_geometrygroups(self, chunk_start, chunk_length):
         num_vertexgroups = self.read_unsigned_int32()
         for i in range(num_vertexgroups):
             vgid = self.read_unsigned_int32()
+            self.vertexgroups[vgid] = []
             num_indices = self.read_unsigned_int32()
             for j in range(num_indices):
                 index = self.read_unsigned_int32()
+                self.vertexgroups[vgid].append(index)
         num_edgegroups = self.read_unsigned_int32()
         for i in range(num_edgegroups):
             egid = self.read_unsigned_int32()
+            self.edgegroups[egid] = []
             num_indices = self.read_unsigned_int32()
             for j in range(num_indices):
                 index = self.read_unsigned_int32()
+                self.edgegroups[egid].append(index)
         num_facegroups = self.read_unsigned_int32()
         for i in range(num_facegroups):
             fgid = self.read_unsigned_int32()
+            self.facegroups[fgid] = []
             num_indices = self.read_unsigned_int32()
             for j in range(num_indices):
                 index = self.read_unsigned_int32()
+                self.facegroups[fgid].append(index)
 
     def parse_chunk_viewport(self, chunk_start, chunk_length):
         wide_string_len = self.read_unsigned_int32()
-        viewports_xml = self.read_bytes(2 * wide_string_len)
+        viewport_xml = self.read_bytes(2 * wide_string_len)
+        self.viewport_xml = viewport_xml
 
     def parse_chunk_groups(self, chunk_start, chunk_length):
         num_groups = self.read_unsigned_int32()
@@ -374,11 +379,17 @@ class LevelParser(BinaryParser):
             group_name = self.read_string(2 * wide_string_len)
             is_visible = bool(self.read_unsigned_int32())
             color = self.read_color()
-            c = {
-                "red": color[0], "green": color[1],
-                "blue": color[2], "alpha": color[3]
-            }
             group_id = self.read_unsigned_int32()
+            self.groups[group_id] = {
+                "name": group_name,
+                "is_visible": is_visible,
+                "color": {
+                    "red": color[0],
+                    "green": color[1],
+                    "blue": color[2],
+                    "alpha": color[3]
+                }
+            }
 
     def parse_chunk_layers(self, chunk_start, chunk_length):
         num_layers = self.read_unsigned_int32()
@@ -387,20 +398,27 @@ class LevelParser(BinaryParser):
             layer_name = self.read_string(2 * wide_string_len)
             is_visible = bool(self.read_unsigned_int32())
             color = self.read_color()
-            c = {
-                "red": color[0], "green": color[1],
-                "blue": color[2], "alpha": color[3]
-            }
             layer_id = self.read_unsigned_int32()
+            self.layers[layer_id] = {
+                "name": layer_name,
+                "is_visible": is_visible,
+                "color": {
+                    "red": color[0],
+                    "green": color[1],
+                    "blue": color[2],
+                    "alpha": color[3]
+                }
+            }
 
     def parse_chunk_customcolors(self, chunk_start, chunk_length):
-        self.colors = []
         num_colors = self.read_unsigned_int32()
         for i in range(num_colors):
             color = self.read_color()
-            self.colors.append({
-                "red": color[0], "green": color[1],
-                "blue": color[2], "alpha": color[3]
+            self.customcolors.append({
+                "red": color[0],
+                "green": color[1],
+                "blue": color[2],
+                "alpha": color[3]
             })
 
     def parse_chunk_editorsettings(self, chunk_start, chunk_length):
@@ -426,3 +444,4 @@ class LevelParser(BinaryParser):
             num_components = self.read_unsigned_int32()
             is_animated = bool(self.read_unsigned_int32())
             prop_value = self.read_float32()
+        self.editor_settings_data = self.data[chunk_start:chunk_start+chunk_length]
