@@ -179,7 +179,7 @@ class ChunkMeshParser(BinaryParser):
 
     def parse_chunk_mappinggroups(self, chunk):
         parser = BinaryParser(chunk)
-        mappinggroups = []
+        mappinggroups = {}
         num_mappinggroups = parser.read_unsigned_int32()
         for i in range(num_mappinggroups):
             mgid = parser.read_unsigned_int32()
