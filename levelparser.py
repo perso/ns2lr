@@ -59,8 +59,10 @@ class LevelParser(BinaryParser):
         chunk_id = self.read_unsigned_int32()
         chunk_length = self.read_unsigned_int32()
         chunk_start = self.fp
+        chunk = self.read_bytes(chunk_length)
+
         if chunk_id == 1:
-            self.parse_chunk_object(chunk_start, chunk_length)
+            parser =
         elif chunk_id == 2:
             self.parse_chunk_mesh(chunk_start, chunk_length)
         elif chunk_id == 3:
