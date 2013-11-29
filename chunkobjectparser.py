@@ -1,22 +1,70 @@
 from binaryparser import BinaryParser
-import exceptions
+import errors
+
 
 class ChunkObjectParser(BinaryParser):
-    def __init__(self):
+    def __init__(self, data, version):
+        super(ChunkObjectParser, self).__init__(data)
+        self.version = version
+
         self.entities = []
 
-    def parse(self, chunk):
+    def parse_layerdata(self):
+            layerdata = {}
+            has_layerdata = bool(self.read_unsigned_int32())
+            if has_layerdata:
+                layerdata["format"] = self.read_unsigned_int32()
+                layerdata["bitvalues"] = []
+                num_layerbitvalues = self.read_unsigned_int32()
+                for i in range(num_layerbitvalues):
+                    bitmask = self.read_unsigned_int32()
+                    layerdata["bitvalues"].append(bitmask)
+            return layerdata
 
-        layerdata = {}
-        has_layerdata = bool(self.read_unsigned_int32())
-        if has_layerdata:
-            layerdata["format"] = self.read_unsigned_int32()
-            layerdata["bitvalues"] = []
-            num_layerbitvalues = self.read_unsigned_int32()
-            for i in range(num_layerbitvalues):
-                bitmask = self.read_unsigned_int32()
-                layerdata["bitvalues"].append(bitmask)
+    def parse_type_float(self, prop_type, num_components):
+        prop = None
+        components = []
+        for i in range(num_components):
+            if i < 4:
+                # Components beyond the fourth are ignored
+                component_value = self.read_float32()
+                components.append(component_value)
+        if (prop_type in (2, 6, 8, 9)):
+            prop = components[0]
+        elif (prop_type == 7):
+            if len(components) == 3:
+                prop = {
+                    "roll": components[0],
+                    "pitch": components[1],
+                    "yaw": components[2]
+                }
+            elif len(components) == 2:
+                prop = {
+                    "roll": components[0],
+                    "pitch": components[1]
+                }
+            elif len(components) == 1:
+                prop = {
+                    "roll": components[0]
+                }
+            else:
+                sys.exit("Error: Type_Angle requires at least one component.")
+        elif (prop_type == 5):
+            if len(components) < 4:
+                alpha = 1
+            else:
+                alpha = components[3]
+            prop = {
+                "red": components[0],
+                "green": components[1],
+                "blue": components[2],
+                "alpha": alpha
+            }
+        return prop
 
+    def parse(self):
+
+        layerdata = self.parse_layerdata()
         groupid = self.read_unsigned_int32()
         classname_len = self.read_unsigned_int32()
         classname = self.read_string(classname_len)
@@ -40,60 +88,7 @@ class ChunkObjectParser(BinaryParser):
             # Type_Float
             if (prop_type in (2, 5, 6, 7, 8, 9)):
 
-                if prop_name not in properties:
-                    properties[prop_name] = []
-
-                components = []
-
-                for i in range(num_components):
-                    if i < 4:
-                        # Components beyond the fourth are ignored
-                        component_value = self.read_float32()
-                        components.append(component_value)
-
-                # Next the components are assigned based on the type of
-                # property
-
-                # Type_Real, Type_Percentage, Type_Time, and Type_Distance use
-                # only the first component
-                if (prop_type in (2, 6, 8, 9)):
-                    properties[prop_name] = components[0]
-
-                # Type_Angle uses component 1 for roll, component 2 for pitch,
-                # and component 3 for yaw
-                if (prop_type == 7):
-
-                    if len(components) == 3:
-                        properties[prop_name].append({
-                            "roll": components[0],
-                            "pitch": components[1],
-                            "yaw": components[2]
-                        })
-                    elif len(components) == 2:
-                        properties[prop_name].append({
-                            "roll": components[0],
-                            "pitch": components[1]
-                        })
-                    elif len(components) == 1:
-                        properties[prop_name].append({
-                            "roll": components[0]
-                        })
-                    else:
-                        raise exceptions.ParseError("Error: Type_Angle requires at least one component.")
-
-                # Type_Color uses component 1 for red, component 2 for green,
-                # component 3 for blue, and component 4 for alpha
-                # (alpha defaults to 1 if there is no component 4)
-                if (prop_type == 5):
-                    if len(components) < 4:
-                        alpha = 1
-                    else:
-                        alpha = components[3]
-                    properties[prop_name].append({
-                        "red": components[0],
-                        "green": components[1],
-                        "blue": components[2]
-                    })
+                properties[prop_name] = self.parse_type_float(prop_type, num_components)
 
             elif (prop_type in (0, 1, 3, 4, 10)):
 
@@ -122,7 +117,7 @@ class ChunkObjectParser(BinaryParser):
                     properties[prop_name] = choice_value
 
             else:
-                raise exceptions.ParseError("Error: invalid property type: %d" % prop_type)
+                raise errors.ParseError("Error: invalid property type: %d" % prop_type)
 
         self.entities.append({
             "classname": classname,

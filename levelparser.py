@@ -1,8 +1,7 @@
 import sys
 import os
-from exceptions import ReadError
 from binaryparser import BinaryParser
-from exceptions import ReadError
+from errors import ReadError
 
 from chunkobjectparser import ChunkObjectParser
 from chunkmeshparser import ChunkMeshParser
@@ -19,6 +18,9 @@ class LevelParser(BinaryParser):
         self.version = 0
         self.skipped_chunks_count = 0
 
+        self.viewport_xml = ""
+        self.editor_settings_data = ""
+
         self.entities = []
         self.vertices = []
         self.edges = []
@@ -26,7 +28,15 @@ class LevelParser(BinaryParser):
         self.materials = []
         self.ghost_vertices = []
         self.smoothed_normals = []
-        self.triangles = []
+        self.facelayers = []
+        self.customcolors = []
+
+        self.mappinggroups = {}
+        self.vertexgroups = {}
+        self.edgegroups = {}
+        self.facegroups = {}
+        self.groups = {}
+        self.layers = {}
 
         with open(self.filename, "rb") as f:
             level_data = f.read()
@@ -68,26 +78,26 @@ class LevelParser(BinaryParser):
         chunk = self.read_bytes(chunk_length)
 
         if chunk_id == 1:
-            parser = ChunkObjectParser()
-            parser.parse(chunk)
+            parser = ChunkObjectParser(chunk, self.version)
+            self.entities.append(parser.parse())
         elif chunk_id == 2:
-            parser = ChunkMeshParser()
-            parser.parse(chunk)
+            parser = ChunkMeshParser(chunk, self.version)
+            parser.parse()
         elif chunk_id == 3:
-            parser = ChunkLayersParser()
-            parser.parse(chunk)
+            parser = ChunkLayersParser(chunk, self.version)
+            parser.parse()
         elif chunk_id == 4:
-            parser = ChunkViewportParser()
-            parser.parse(chunk)
+            parser = ChunkViewportParser(chunk, self.version)
+            parser.parse()
         elif chunk_id == 5:
-            parser = ChunkGroupsParser()
-            parser.parse(chunk)
+            parser = ChunkGroupsParser(chunk, self.version)
+            parser.parse()
         elif chunk_id == 6:
-            parser = ChunkCustomColorsParser()
-            parser.parse(chunk)
+            parser = ChunkCustomColorsParser(chunk, self.version)
+            parser.parse()
         elif chunk_id == 7:
-            parser = ChunkEditorSettingsParser()
-            parser.parse(chunk)
+            parser = ChunkEditorSettingsParser(chunk, self.version)
+            parser.parse()
         else:
             sys.exit("Error: unknown chunk id: %d" % (chunk_id))
         chunk_bytes_read = self.fp - chunk_start

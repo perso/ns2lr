@@ -1,5 +1,6 @@
 from struct import *
-from exceptions import ReadError
+from errors import ReadError
+
 
 class BinaryParser(object):
 

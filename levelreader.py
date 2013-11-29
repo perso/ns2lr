@@ -1,22 +1,15 @@
-from struct import *
-import pprint
-
-from errors import ReadError
 from levelparser import LevelParser
 
 class LevelReader(object):
 
     """Reads NS2 level files"""
 
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self):
         self.entities = []
 
-    def read_level(self):
-        parser = LevelParser(self.filename)
+    def read_level(self, filename):
+        parser = LevelParser(filename)
         parser.parse()
-        for entity in parser.entities:
-            self.entities.append(Entity(classname=entity["classname"]))
 
 class Entity(object):
 
