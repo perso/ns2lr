@@ -1,17 +1,15 @@
-import sys
 import os
-from binaryparser import BinaryParser
-from errors import IOError
-
-from chunkobjectparser import ChunkObjectParser
-from chunkmeshparser import ChunkMeshParser
-from chunklayersparser import ChunkLayersParser
-from chunkviewportparser import ChunkViewportParser
-from chunkgroupsparser import ChunkGroupsParser
-from chunkcustomcolorsparser import ChunkCustomColorsParser
-from chunkeditorsettingsparser import ChunkEditorSettingsParser
 import errors
 
+from parsers.binaryparser import BinaryParser
+
+from parsers.chunkobjectparser import ChunkObjectParser
+from parsers.chunkmeshparser import ChunkMeshParser
+from parsers.chunklayersparser import ChunkLayersParser
+from parsers.chunkviewportparser import ChunkViewportParser
+from parsers.chunkgroupsparser import ChunkGroupsParser
+from parsers.chunkcustomcolorsparser import ChunkCustomColorsParser
+from parsers.chunkeditorsettingsparser import ChunkEditorSettingsParser
 
 class LevelParser(BinaryParser):
     def __init__(self, filename):

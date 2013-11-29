@@ -1,4 +1,4 @@
-from binaryparser import BinaryParser
+from parsers.binaryparser import BinaryParser
 
 
 class ChunkViewportParser(BinaryParser):

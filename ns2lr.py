@@ -3,7 +3,6 @@
 
 import os
 import sys
-import pprint
 
 from levelreader import LevelReader
 
@@ -13,8 +12,8 @@ def main(args):
     if not os.path.exists(sys.argv[1]):
         sys.exit("Error: file %s was not found!" % (sys.argv[1]))
     filename = sys.argv[1]
-    reader = LevelReader()
-    reader.read_level(filename)
+    parser = LevelReader()
+    parser.read_level(filename)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

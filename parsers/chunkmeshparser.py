@@ -1,5 +1,5 @@
 import errors
-from binaryparser import BinaryParser
+from parsers.binaryparser import BinaryParser
 
 
 class ChunkMeshParser(BinaryParser):
