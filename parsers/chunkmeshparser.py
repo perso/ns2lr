@@ -95,6 +95,19 @@ class ChunkMeshParser(BinaryParser):
             })
         return edges
 
+    def parse_edgeloop(self, parser):
+        edgeloop = []
+        num_edges = parser.read_unsigned_int32()
+        for k in range(num_edges):
+            is_flipped = bool(parser.read_unsigned_int32())
+            edge_index = parser.read_unsigned_int32()
+            edge = {
+                "edge_index": edge_index,
+                "is_flipped": is_flipped
+            }
+            edgeloop.append(edge)
+        return edgeloop
+
     def parse_chunk_faces(self, chunk):
         parser = BinaryParser(chunk)
         faces = []
@@ -109,16 +122,10 @@ class ChunkMeshParser(BinaryParser):
             face["edgeloops"] = []
             num_additional_edgeloops = parser.read_unsigned_int32()
             # border edge loop is always the first edge loop
-            for j in range(1 + num_additional_edgeloops):
-                face["edgeloops"].append([])
-                num_edges = parser.read_unsigned_int32()
-                for k in range(num_edges):
-                    is_flipped = bool(parser.read_unsigned_int32())
-                    edge_index = parser.read_unsigned_int32()
-                    face["edgeloops"][j].append({
-                        "edge_index": edge_index,
-                        "is_flipped": is_flipped
-                    })
+            face["border_edgeloop"] = self.parse_edgeloop(parser)
+            for j in range(num_additional_edgeloops):
+                edgeloop = self.parse_edgeloop(parser)
+                face["edgeloops"].append(edgeloop)
             faces.append(face)
         return faces
 
@@ -148,7 +155,7 @@ class ChunkMeshParser(BinaryParser):
         num_faces = parser.read_unsigned_int32()
         num_triangles = parser.read_unsigned_int32()
         for i in range(num_faces):
-            triangles.append({})
+            triangles.append([])
             num_face_triangles = parser.read_unsigned_int32()
             for j in range(num_face_triangles):
                 vertex_index1 = parser.read_unsigned_int32()
@@ -157,14 +164,14 @@ class ChunkMeshParser(BinaryParser):
                 smoothed_normal_index1 = parser.read_unsigned_int32()
                 smoothed_normal_index2 = parser.read_unsigned_int32()
                 smoothed_normal_index3 = parser.read_unsigned_int32()
-                triangles[i]["triangles"] = {
+                triangles[i].append({
                     "vi_1": vertex_index1,
                     "vi_2": vertex_index2,
                     "vi_3": vertex_index3,
                     "sni_1": smoothed_normal_index1,
                     "sni_2": smoothed_normal_index2,
                     "sni_3": smoothed_normal_index3
-                }
+                })
         return (ghost_vertices, smoothed_normals, triangles)
 
     def parse_chunk_facelayers(self, chunk):
