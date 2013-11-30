@@ -11,13 +11,33 @@ from parsers.chunkgroupsparser import ChunkGroupsParser
 from parsers.chunkcustomcolorsparser import ChunkCustomColorsParser
 from parsers.chunkeditorsettingsparser import ChunkEditorSettingsParser
 
+class ChunkParser(object):
+
+    def __init__(self, chunk_id, chunk, version):
+        self.chunk_parser = None
+        if chunk_id == 1:
+            self.chunk_parser = ChunkObjectParser(chunk, version)
+        elif chunk_id == 2:
+            self.chunk_parser = ChunkMeshParser(chunk, version)
+        elif chunk_id == 3:
+            self.chunk_parser = ChunkLayersParser(chunk, version)
+        elif chunk_id == 4:
+            self.chunk_parser = ChunkViewportParser(chunk, version)
+        elif chunk_id == 5:
+            self.chunk_parser = ChunkGroupsParser(chunk, version)
+        elif chunk_id == 6:
+            self.chunk_parser = ChunkCustomColorsParser(chunk, version)
+        elif chunk_id == 7:
+            self.chunk_parser = ChunkEditorSettingsParser(chunk, version)
+        else:
+            raise errors.ParseError("Error: unknown chunk id: %d" % (chunk_id))
+
+    def parse_chunk(self):
+        return self.chunk_parser.parse()
+
 class LevelParser(BinaryParser):
     def __init__(self, filename):
-
         self.filename = filename
-        self.version = 0
-        self.entities = []
-
         with open(self.filename, "rb") as f:
             level_data = f.read()
         super(LevelParser, self).__init__(level_data)
@@ -31,13 +51,16 @@ class LevelParser(BinaryParser):
         print("Reading level \"" + self.filename +
               "\" (version " + str(self.version) + ")")
 
-        while self.fp < len(self.data):
+        while not self.end():
             try:
-                self.read_chunk()
+                chunk_id = self.read_unsigned_int32()
+                chunk_length = self.read_unsigned_int32()
+                self.read_chunk(chunk_id, chunk_length)
+
             except IOError as e:
                 raise
 
-        print("Loaded %d entities." % len(self.entities))
+        #print("Loaded %d entities." % len(self.entities))
 
     def parse_magic_number(self):
         return self.read_string(3)
@@ -45,37 +68,11 @@ class LevelParser(BinaryParser):
     def parse_version(self):
         return self.read_unsigned_char8()
 
-    def read_chunk(self):
-
-        chunk_id = self.read_unsigned_int32()
-        chunk_length = self.read_unsigned_int32()
+    def read_chunk(self, chunk_id, chunk_length):
         chunk_start = self.fp
         chunk = self.read_bytes(chunk_length)
-
-        if chunk_id == 1:
-            parser = ChunkObjectParser(chunk, self.version)
-            self.entities.append(parser.parse())
-        elif chunk_id == 2:
-            parser = ChunkMeshParser(chunk, self.version)
-            parser.parse()
-        elif chunk_id == 3:
-            parser = ChunkLayersParser(chunk, self.version)
-            parser.parse()
-        elif chunk_id == 4:
-            parser = ChunkViewportParser(chunk, self.version)
-            parser.parse()
-        elif chunk_id == 5:
-            parser = ChunkGroupsParser(chunk, self.version)
-            parser.parse()
-        elif chunk_id == 6:
-            parser = ChunkCustomColorsParser(chunk, self.version)
-            parser.parse()
-        elif chunk_id == 7:
-            parser = ChunkEditorSettingsParser(chunk, self.version)
-            parser.parse()
-        else:
-            raise errors.ParseError("Error: unknown chunk id: %d" % (chunk_id))
-
+        parser = ChunkParser(chunk_id, chunk, self.version)
+        retval = parser.parse_chunk()
         chunk_bytes_read = self.fp - chunk_start
         chunk_bytes_left = chunk_length - chunk_bytes_read
         if chunk_bytes_left != 0:

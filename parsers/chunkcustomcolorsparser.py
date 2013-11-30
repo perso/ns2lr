@@ -6,7 +6,6 @@ class ChunkCustomColorsParser(BinaryParser):
     def __init__(self, data, version):
         super(ChunkCustomColorsParser, self).__init__(data)
         self.version = version
-
         self.customcolors = []
 
     def parse(self):
