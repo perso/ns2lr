@@ -15,6 +15,9 @@ class LevelReader(object):
         self.edges = []
         self.faces = []
 
+    def write_level(self, filename):
+        pass
+
     def read_level(self, filename):
         parser = LevelParser(filename)
         parser.parse()
