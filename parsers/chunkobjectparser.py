@@ -7,8 +7,6 @@ class ChunkObjectParser(BinaryParser):
         super(ChunkObjectParser, self).__init__(data)
         self.version = version
 
-        self.entities = []
-
     def parse_layerdata(self):
             layerdata = {}
             has_layerdata = bool(self.read_unsigned_int32())
@@ -119,11 +117,11 @@ class ChunkObjectParser(BinaryParser):
             else:
                 raise errors.ParseError("Error: invalid property type: %d" % prop_type)
 
-        self.entities.append({
+        entity = {
             "classname": classname,
             "groupid": groupid,
             "layerdata": layerdata,
             "properties": properties
-        })
+        }
 
-        return self.entities
+        return entity

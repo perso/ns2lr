@@ -11,22 +11,16 @@ class ChunkMeshParser(BinaryParser):
         self.viewport_xml = ""
         self.editor_settings_data = ""
 
-        self.entities = []
         self.vertices = []
         self.edges = []
         self.faces = []
         self.materials = []
         self.ghost_vertices = []
         self.smoothed_normals = []
-        self.facelayers = []
-        self.customcolors = []
-
-        self.mappinggroups = {}
-        self.vertexgroups = {}
-        self.edgegroups = {}
-        self.facegroups = {}
-        self.groups = {}
-        self.layers = {}
+        self.triangles = []
+        self.face_layers = []
+        self.mapping_groups = []
+        self.geometry_groups = []
 
     def parse(self):
 
@@ -37,24 +31,37 @@ class ChunkMeshParser(BinaryParser):
             mesh_chunk = self.read_bytes(mesh_chunk_length)
 
             if mesh_chunk_id == 1:
-                self.parse_chunk_vertices(mesh_chunk)
+                self.vertices = self.parse_chunk_vertices(mesh_chunk)
             elif mesh_chunk_id == 2:
-                self.parse_chunk_edges(mesh_chunk)
+                self.edges = self.parse_chunk_edges(mesh_chunk)
             elif mesh_chunk_id == 3:
-                self.parse_chunk_faces(mesh_chunk)
+                self.faces = self.parse_chunk_faces(mesh_chunk)
             elif mesh_chunk_id == 4:
-                self.parse_chunk_materials(mesh_chunk)
+                self.materials = self.parse_chunk_materials(mesh_chunk)
             elif mesh_chunk_id == 5:
-                self.parse_chunk_triangles(mesh_chunk)
+                (self.ghost_vertices, self.smoothed_normals, self.triangles) = self.parse_chunk_triangles(mesh_chunk)
             elif mesh_chunk_id == 6:
-                self.parse_chunk_facelayers(mesh_chunk)
+                self.face_layers = self.parse_chunk_facelayers(mesh_chunk)
             elif mesh_chunk_id == 7:
-                self.parse_chunk_mappinggroups(mesh_chunk)
+                self.mapping_groups = self.parse_chunk_mappinggroups(mesh_chunk)
             elif mesh_chunk_id == 8:
-                self.parse_chunk_geometrygroups(mesh_chunk)
+                self.geometry_groups = self.parse_chunk_geometrygroups(mesh_chunk)
             else:
                 print("Warning: unknown mesh chunk id: %d" % (mesh_chunk_id))
                 data = self.read_bytes(mesh_chunk_length)
+
+        return {
+            "vertices": self.vertices,
+            "edges": self.edges,
+            "faces": self.faces,
+            "materials": self.materials,
+            "ghost_vertices": self.ghost_vertices,
+            "smoothed_normals": self.smoothed_normals,
+            "triangles": self.triangles,
+            "face_layers": self.face_layers,
+            "mapping_groups": self.mapping_groups,
+            "geometry_groups": self.geometry_groups
+        }
 
     def parse_chunk_vertices(self, chunk):
         parser = BinaryParser(chunk)

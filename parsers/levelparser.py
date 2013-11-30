@@ -41,6 +41,7 @@ class LevelParser(BinaryParser):
         with open(self.filename, "rb") as f:
             level_data = f.read()
         super(LevelParser, self).__init__(level_data)
+        self.elements = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[] }
 
     def parse(self):
         magicnumber = self.parse_magic_number()
@@ -55,12 +56,11 @@ class LevelParser(BinaryParser):
             try:
                 chunk_id = self.read_unsigned_int32()
                 chunk_length = self.read_unsigned_int32()
-                self.read_chunk(chunk_id, chunk_length)
+                value = self.read_chunk(chunk_id, chunk_length)
+                self.elements[chunk_id].append(value)
 
             except IOError as e:
                 raise
-
-        #print("Loaded %d entities." % len(self.entities))
 
     def parse_magic_number(self):
         return self.read_string(3)
@@ -72,8 +72,30 @@ class LevelParser(BinaryParser):
         chunk_start = self.fp
         chunk = self.read_bytes(chunk_length)
         parser = ChunkParser(chunk_id, chunk, self.version)
-        retval = parser.parse_chunk()
+        value = parser.parse_chunk()
         chunk_bytes_read = self.fp - chunk_start
         chunk_bytes_left = chunk_length - chunk_bytes_read
         if chunk_bytes_left != 0:
             raise errors.ParseError("Error: read %d bytes, should be %d bytes" % (chunk_bytes_read, chunk_length))
+        return value
+
+    def get_entities(self):
+        return self.elements[1]
+
+    def get_mesh(self):
+        return self.elements[2][0]
+
+    def get_layers(self):
+        return self.elements[3]
+
+    def get_viewport(self):
+        return self.elements[4]
+
+    def get_groups(self):
+        if 0 in self.elements[5]:
+            return self.elements[5][0]
+        else:
+            return {}
+
+    def get_customcolors(self):
+        return self.elements[6]

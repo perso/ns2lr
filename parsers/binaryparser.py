@@ -46,6 +46,10 @@ class BinaryParser(object):
         data = self.read_bytes(n)
         return data.decode("utf-8")
 
+    def read_widestring(self, n):
+        data = self.read_bytes(n)
+        return data.decode("utf-16")
+
     def read_color(self):
         data = self.read_bytes(4)
         return unpack('BBBB', data)
