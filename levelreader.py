@@ -58,24 +58,37 @@ class LevelReader(object):
             self.vertices.append(v)
 
         for edge in edges:
-            e = Edge(edge["vi_1"], edge["vi_2"])
+            e = Edge(self.vertices[edge["vi_1"]], self.vertices[edge["vi_2"]])
             e.is_flipped = edge["is_flipped"]
             self.edges.append(e)
 
         for i, face in enumerate(faces):
-            edgeloop = face["border_edgeloop"]
-            border_el = EdgeLoop()
-            for edge in edgeloop:
-                border_el.add_edge(edge["edge_index"], edge["is_flipped"])
-            f = Face(border_el)
+            border_edgeloop = EdgeLoop()
+            for edge in face["border_edgeloop"]:
+                border_edgeloop.add_edge(self.edges[edge["edge_index"]])
+            f = Face(border_edgeloop)
             f.angle = face["angle"]
             f.offset = face["offset"]
             f.scale = face["scale"]
             f.mapping_group_id = face["mapping_group_id"]
-            f.materialid = face["materialid"]
+            f.material = materials[face["materialid"]]
 
         self.materials = materials
+        #pprint.pprint(self.materials)
 
-        pprint.pprint(faces[0])
-        pprint.pprint(face_triangles[0])
-        pprint.pprint(edges[623])
+        pprint.pprint(vertices)
+
+        v1 = Vertex(2.0, 2.0, 2.0)
+        v2 = Vertex(2.0, 2.0, 4.0)
+        v3 = Vertex(2.0, 4.0, 4.0)
+        v4 = Vertex(2.0, 4.0, 2.0)
+
+        el = EdgeLoop()
+        el.add_edge(Edge(v1, v2))
+        el.add_edge(Edge(v2, v3))
+        el.add_edge(Edge(v3, v4))
+        el.add_edge(Edge(v4, v1))
+
+        f = Face(el)
+
+        # code to write face to a file
