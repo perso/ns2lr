@@ -29,7 +29,7 @@ class LevelReader(object):
             f.write(ctypes.c_ubyte(10))     # version
 
             f.write(ctypes.c_uint32(2))     # chunk_id (mesh)
-            f.write(ctypes.c_uint32(242))    # chunk_length = 43 + 31 + 64 + 20 + 44 + 5*8 = 242
+            f.write(ctypes.c_uint32(294))    # chunk_length = 43 + 31 + 64 + 20 + 44 + 12 + 4 + 12 + 8*8 = 294
 
             # VERTICES
 
@@ -82,8 +82,8 @@ class LevelReader(object):
             f.write(ctypes.c_float(0))     # angle
             f.write(ctypes.c_float(0))     # offset 1
             f.write(ctypes.c_float(0))     # offset 2
-            f.write(ctypes.c_float(1.0))     # scale 1
-            f.write(ctypes.c_float(1.0))     # scale 2
+            f.write(ctypes.c_float(0.3075787425041199))     # scale 1
+            f.write(ctypes.c_float(0.3075787425041199))     # scale 2
             f.write(ctypes.c_uint32(4294967295))       # mapping_group_id
             f.write(ctypes.c_uint32(0))       # material_id
             f.write(ctypes.c_uint32(0))       # number of additional edgeloops
@@ -91,13 +91,13 @@ class LevelReader(object):
             # the border edgeloop
             f.write(ctypes.c_uint32(3))     # number of edges in the border edgeloop
 
-            f.write(ctypes.c_uint32(0))     # is_flipped
-            f.write(ctypes.c_uint32(0))     # edge index
-
-            f.write(ctypes.c_uint32(0))     # is_flipped
+            f.write(ctypes.c_uint32(1))     # is_flipped
             f.write(ctypes.c_uint32(1))     # edge index
 
-            f.write(ctypes.c_uint32(0))     # is_flipped
+            f.write(ctypes.c_uint32(1))     # is_flipped
+            f.write(ctypes.c_uint32(0))     # edge index
+
+            f.write(ctypes.c_uint32(1))     # is_flipped
             f.write(ctypes.c_uint32(2))     # edge index
 
             # MATERIALS
@@ -120,24 +120,64 @@ class LevelReader(object):
             f.write(ctypes.c_uint32(1))     # number of triangles (total)
             f.write(ctypes.c_uint32(1))     # number of triangles (this face)
 
-            f.write(ctypes.c_uint32(0))     # vertex indices
+            f.write(ctypes.c_uint32(2))     # vertex indices
             f.write(ctypes.c_uint32(1))
-            f.write(ctypes.c_uint32(2))
+            f.write(ctypes.c_uint32(0))
 
             f.write(ctypes.c_uint32(0))     # smoothed normals
             f.write(ctypes.c_uint32(0))
             f.write(ctypes.c_uint32(0))
 
-            #utf8_encoded_xml_data = (self.viewport[0]+"\n").encode("utf-8")
-            #f.write(ctypes.c_uint32(4))     # chunk_id (viewport)
-            #f.write(ctypes.c_uint32(len(utf8_encoded_xml_data)+4))      # chunk_length
-            #f.write(ctypes.c_uint32(len(utf8_encoded_xml_data)/2))    # length of utf-8 encoded xml in unicode characters
-            #f.write(utf8_encoded_xml_data)
-            #print("\ntest: %d" % len(utf8_encoded_xml_data))
+            # FACE LAYERS
 
-            #f.write(ctypes.c_uint32(7))
-            #f.write(ctypes.c_uint32(len(self.editorsettings)))    # chunk_length
-            #f.write(self.editorsettings)
+            f.write(ctypes.c_uint32(6))     # chunk_id (face layers)
+            f.write(ctypes.c_uint32(12))    # chunk_length
+
+            f.write(ctypes.c_uint32(1))     # num_facelayers
+            f.write(ctypes.c_uint32(2))     # format
+            f.write(ctypes.c_uint32(0))     # has_layers
+
+            # MAPPING GROUPS
+
+            f.write(ctypes.c_uint32(7))     # chunk_id (mapping groups)
+            f.write(ctypes.c_uint32(4))    # chunk_length
+
+            f.write(ctypes.c_uint32(0))     # num mapping groups
+
+            # GEOMETRY GROUPS
+
+            f.write(ctypes.c_uint32(8))     # chunk_id (geometry groups)
+            f.write(ctypes.c_uint32(12))    # chunk_length
+
+            f.write(ctypes.c_uint32(0))
+            f.write(ctypes.c_uint32(0))
+            f.write(ctypes.c_uint32(0))
+
+            # MESH CHUNK ENDS HERE
+
+            # VIEWPORT
+
+            #viewport_data = self.viewport[0]
+            #wide_string = (viewport_data+"\n").encode("utf-16")
+            #wide_string_length = len(wide_string)
+
+            #f.write(ctypes.c_uint32(4))                                     # chunk_id (viewport)
+            #f.write(ctypes.c_uint32(wide_string_length + 4))        # chunk_length
+            #print(wide_string_length + 4)
+
+            #f.write(ctypes.c_uint32(wide_string_length / 2))          # length of utf-8 encoded xml in unicode characters
+            #f.write(wide_string)
+
+            # EDITOR SETTINGS
+
+            #editor_settings_data = self.editorsettings[0]
+            #editor_settings_data_length = len(editor_settings_data)
+
+            #f.write(ctypes.c_uint32(7))                                     # chunk_id (editor settings)
+            #f.write(ctypes.c_uint32(editor_settings_data_length))             # chunk_length
+            #print(editor_settings_data_length)
+
+            #f.write(editor_settings_data)
 
     def read_level(self, filename):
         parser = LevelParser(filename)
@@ -162,21 +202,23 @@ class LevelReader(object):
         mapping_groups = mesh["mapping_groups"]
         geometry_groups = mesh["geometry_groups"]
 
-        print("Loaded %d entities." % len(entities))
-        print("Loaded %d groups." % len(groups))
+        #print("Loaded %d entities." % len(entities))
+        #print("Loaded %d groups." % len(groups))
         print("Loaded %d vertices." % len(vertices))
         print("Loaded %d edges." % len(edges))
         print("Loaded %d faces." % len(faces))
         print("Loaded %d materials." % len(materials))
         print("Loaded triangles for %d faces." % len(face_triangles))
-        print("Loaded %d customcolors." % len(customcolors))
-        print("Loaded %d layers." % len(layers))
-        print("Loaded %d viewport." % len(viewport))
-        print("Loaded %d editorsettings." % len(editorsettings))
-        print("Loaded %d face_layers." % len(face_layers))
-        print("Loaded %d mapping_groups." % len(mapping_groups))
-        print("Loaded %d geometry_groups." % len(geometry_groups))
+        #print("Loaded %d customcolors." % len(customcolors))
+        #print("Loaded %d layers." % len(layers))
+        #print("Loaded %d viewport." % len(viewport))
+        #print("Loaded %d editorsettings." % len(editorsettings))
+        #print("Loaded %d face_layers." % len(face_layers))
+        #print("Loaded %d mapping_groups." % len(mapping_groups))
+        #print("Loaded %d geometry_groups." % len(geometry_groups))
 
+        pprint.pprint(faces)
+        pprint.pprint(face_triangles)
 
         for entity in entities:
             e = Entity(entity["classname"])
@@ -213,21 +255,6 @@ class LevelReader(object):
             f.material = materials[face["materialid"]]
 
         self.materials = materials
-
-        #pprint.pprint(vertices)
-        #pprint.pprint(edges)
-        #pprint.pprint(faces)
-        #pprint.pprint(materials)
-        #print(editorsettings)
-        if len(ghost_vertices) > 0:
-            pprint.pprint(ghost_vertices[0])
-
-        if len(smoothed_normals) > 0:
-            pprint.pprint(smoothed_normals[0])
-
-        if len(face_triangles) > 0:
-            pprint.pprint(face_triangles[0])
-
         self.viewport = viewport
         self.editorsettings = editorsettings
 

@@ -238,5 +238,9 @@ class ChunkMeshParser(BinaryParser):
             for j in range(num_indices):
                 index = parser.read_unsigned_int32()
                 facegroups[fgid].append(index)
-        return (vertexgroups, edgegroups, facegroups)
+        return {
+            "vertexgroups": vertexgroups,
+            "edgegroups": edgegroups,
+            "facegroups": facegroups
+        }
 
