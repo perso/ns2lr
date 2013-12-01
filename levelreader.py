@@ -74,9 +74,11 @@ class LevelReader(object):
             f.material = materials[face["materialid"]]
 
         self.materials = materials
-        #pprint.pprint(self.materials)
 
         pprint.pprint(vertices)
+        pprint.pprint(edges)
+        pprint.pprint(faces)
+        pprint.pprint(materials)
 
         v1 = Vertex(2.0, 2.0, 2.0)
         v2 = Vertex(2.0, 2.0, 4.0)
@@ -90,5 +92,6 @@ class LevelReader(object):
         el.add_edge(Edge(v4, v1))
 
         f = Face(el)
+
 
         # code to write face to a file
