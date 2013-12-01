@@ -1,5 +1,7 @@
+from ctypes import c_ubyte
 import pprint
 import sys
+import ctypes
 from elements.Elements import *
 from parsers.levelparser import LevelParser
 
@@ -16,7 +18,30 @@ class LevelReader(object):
         self.faces = []
 
     def write_level(self, filename):
-        pass
+        with open("testing.level", "wb") as f:
+            f.write("LVL".encode("utf-8"))  # magic number
+            f.write(ctypes.c_ubyte(10))     # version
+            f.write(ctypes.c_uint32(2))     # chunk_id (mesh)
+            f.write(ctypes.c_uint32(51))    # chunk_length
+            f.write(ctypes.c_uint32(1))     # chunk_id (vertices)
+            f.write(ctypes.c_uint32(43))    # chunk_length
+
+            f.write(ctypes.c_uint32(3))     # number of vertices
+
+            f.write(ctypes.c_float(0.0))    # vertex 1
+            f.write(ctypes.c_float(0.0))
+            f.write(ctypes.c_float(0.0))
+            f.write(ctypes.c_ubyte(0))
+
+            f.write(ctypes.c_float(0.0))    # vertex 2
+            f.write(ctypes.c_float(0.0))
+            f.write(ctypes.c_float(3.0))
+            f.write(ctypes.c_ubyte(0))
+
+            f.write(ctypes.c_float(0.0))    # vertex 3
+            f.write(ctypes.c_float(3.0))
+            f.write(ctypes.c_float(0.0))
+            f.write(ctypes.c_ubyte(0))
 
     def read_level(self, filename):
         parser = LevelParser(filename)
@@ -75,10 +100,10 @@ class LevelReader(object):
 
         self.materials = materials
 
-        pprint.pprint(vertices)
-        pprint.pprint(edges)
-        pprint.pprint(faces)
-        pprint.pprint(materials)
+        #pprint.pprint(vertices)
+        #pprint.pprint(edges)
+        #pprint.pprint(faces)
+        #pprint.pprint(materials)
 
         v1 = Vertex(2.0, 2.0, 2.0)
         v2 = Vertex(2.0, 2.0, 4.0)
@@ -93,5 +118,6 @@ class LevelReader(object):
 
         f = Face(el)
 
-
         # code to write face to a file
+
+        self.write_level("testing.level")

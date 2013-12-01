@@ -13,7 +13,9 @@ def main(args):
         sys.exit("Error: file %s was not found!" % (sys.argv[1]))
     filename = sys.argv[1]
     parser = LevelReader()
-    parser.read_level(filename)
+    #parser.read_level(filename)
+    parser.write_level("testing.level")
+    parser.read_level("testing.level")
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
