@@ -95,19 +95,6 @@ class ChunkMeshParser(BinaryParser):
             })
         return edges
 
-    def parse_edgeloop(self, parser):
-        edgeloop = []
-        num_edges = parser.read_unsigned_int32()
-        for k in range(num_edges):
-            is_flipped = bool(parser.read_unsigned_int32())
-            edge_index = parser.read_unsigned_int32()
-            edge = {
-                "edge_index": edge_index,
-                "is_flipped": is_flipped
-            }
-            edgeloop.append(edge)
-        return edgeloop
-
     def parse_chunk_faces(self, chunk):
         parser = BinaryParser(chunk)
         faces = []
@@ -128,6 +115,19 @@ class ChunkMeshParser(BinaryParser):
                 face["edgeloops"].append(edgeloop)
             faces.append(face)
         return faces
+
+    def parse_edgeloop(self, parser):
+        edgeloop = []
+        num_edges = parser.read_unsigned_int32()
+        for k in range(num_edges):
+            is_flipped = bool(parser.read_unsigned_int32())
+            edge_index = parser.read_unsigned_int32()
+            edge = {
+                "edge_index": edge_index,
+                "is_flipped": is_flipped
+            }
+            edgeloop.append(edge)
+        return edgeloop
 
     def parse_chunk_materials(self, chunk):
         parser = BinaryParser(chunk)

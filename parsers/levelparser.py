@@ -99,3 +99,6 @@ class LevelParser(BinaryParser):
 
     def get_customcolors(self):
         return self.elements[6]
+
+    def get_editorsettings(self):
+        return self.elements[7]

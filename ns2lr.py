@@ -14,8 +14,11 @@ def main(args):
     filename = sys.argv[1]
     parser = LevelReader()
     #parser.read_level(filename)
-    parser.write_level("testing.level")
-    parser.read_level("testing.level")
+    parser.write_level("C:\Personal\levels\written.level")
+    print("\n[Original level]")
+    parser.read_level("C:\Personal\levels\written.level")
+    print("\n[Edited level]")
+    parser.read_level("C:\Personal\levels\written_edited.level")
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

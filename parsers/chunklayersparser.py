@@ -6,7 +6,6 @@ class ChunkLayersParser(BinaryParser):
     def __init__(self, data, version):
         super(ChunkLayersParser, self).__init__(data)
         self.version = version
-
         self.layers = {}
 
     def parse(self):

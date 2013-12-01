@@ -8,6 +8,8 @@ class ChunkEditorSettingsParser(BinaryParser):
         self.version = version
 
     def parse(self):
+        return self.data
+
         unknown_field_1 = self.read_unsigned_int32()
         unknown_field_2 = self.read_unsigned_int32()
         unknown_field_3 = self.read_unsigned_int32()
