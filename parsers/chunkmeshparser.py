@@ -1,3 +1,4 @@
+import pprint
 import errors
 from parsers.binaryparser import BinaryParser
 
@@ -30,6 +31,8 @@ class ChunkMeshParser(BinaryParser):
             mesh_chunk_length = self.read_unsigned_int32()
             mesh_chunk = self.read_bytes(mesh_chunk_length)
 
+            print("\tid: %d, length: %d" % (mesh_chunk_id, len(mesh_chunk)))
+
             if mesh_chunk_id == 1:
                 self.vertices = self.parse_chunk_vertices(mesh_chunk)
             elif mesh_chunk_id == 2:
@@ -50,7 +53,7 @@ class ChunkMeshParser(BinaryParser):
                 print("Warning: unknown mesh chunk id: %d" % (mesh_chunk_id))
                 data = self.read_bytes(mesh_chunk_length)
 
-        return {
+        mesh_data = {
             "vertices": self.vertices,
             "edges": self.edges,
             "faces": self.faces,
@@ -62,6 +65,8 @@ class ChunkMeshParser(BinaryParser):
             "mapping_groups": self.mapping_groups,
             "geometry_groups": self.geometry_groups
         }
+        #pprint.pprint(mesh_data)
+        return mesh_data
 
     def parse_chunk_vertices(self, chunk):
         parser = BinaryParser(chunk)

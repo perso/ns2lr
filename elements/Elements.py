@@ -1,4 +1,18 @@
-class Entity(object):
+import ctypes
+
+
+class SparkDataBlock(object):
+
+    def __init__(self):
+        pass
+
+    def dump(self):
+        raise NotImplementedError()
+
+    def load(self):
+        raise NotImplementedError()
+
+class Entity(SparkDataBlock):
 
     def __init__(self, classname):
         self.classname = classname
@@ -6,27 +20,22 @@ class Entity(object):
         self.layerdata = {}
         self.properties = {}
 
-class Point(object):
+class Vertex(SparkDataBlock):
 
     def __init__(self, x, y, z):
         self.x = x
         self.y = y
         self.z = z
-
-class Vertex(Point):
-
-    def __init__(self, x, y, z):
-        super(Vertex, self).__init__(x, y, z)
         self.has_smoothing = False
 
-class Edge(object):
+class Edge(SparkDataBlock):
 
     def __init__(self, v1, v2):
         self.v1 = v1
         self.v2 = v2
         self.is_flipped = False
 
-class Group(object):
+class Group(SparkDataBlock):
 
     def __init__(self, group_id, group_name):
         self.id = group_id
@@ -34,7 +43,7 @@ class Group(object):
         self.color = None
         self.is_visible = True
 
-class EdgeLoop(object):
+class EdgeLoop(SparkDataBlock):
 
     def __init__(self):
         self.edges = []
@@ -42,7 +51,7 @@ class EdgeLoop(object):
     def add_edge(self, edge):
         self.edges.append(edge)
 
-class Face(object):
+class Face(SparkDataBlock):
 
     def __init__(self, border_edgeloop):
         self.scale = (1.0, 1.0)
@@ -53,7 +62,7 @@ class Face(object):
         self.mapping_group_id = -1
         self.material = ""
 
-class Triangle(object):
+class Triangle(SparkDataBlock):
 
     def __init__(self, vi_1, vi_2, vi_3):
         self.vi_1 = vi_1
@@ -67,3 +76,20 @@ class Triangle(object):
         self.sni_1 = sni_1
         self.sni_2 = sni_2
         self.sni_3 = sni_3
+
+class Material(SparkDataBlock):
+
+    def __init__(self):
+        self.chunk_id = 4
+
+    def dump(self):
+        b_repr = b""
+        b_repr += ctypes.c_uint32(chunk_id)
+        b_repr += ctypes.c_uint32(chunk_length)
+        b_repr += ctypes.c_uint32(num_materials)
+        b_repr += ctypes.c_uint32(material_filepath_length)
+        b_repr += material_filepath.encode("utf-8")
+        return b_repr
+
+    def load(self):
+        pass

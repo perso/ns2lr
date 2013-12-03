@@ -23,160 +23,142 @@ class LevelReader(object):
         self.viewport = ""
         self.editorsettings = ""
 
+    def write_viewport(self, f):
+
+        with open("chunkviewport.bin", "rb") as fh:
+            viewport_data = fh.read()
+            f.write(viewport_data)
+
+    def write_triangles(self, f):
+        f.write(ctypes.c_uint32(5))     # chunk_id (triangles)
+        f.write(ctypes.c_uint32(44))    # chunk_length
+        f.write(ctypes.c_uint32(0))     # number of ghost vertices
+        f.write(ctypes.c_uint32(0))     # number of smoothed normals
+        f.write(ctypes.c_uint32(1))     # number of faces
+        f.write(ctypes.c_uint32(1))     # number of triangles (total)
+        f.write(ctypes.c_uint32(1))     # number of triangles (this face)
+        f.write(ctypes.c_uint32(2))     # vertex indices
+        f.write(ctypes.c_uint32(1))
+        f.write(ctypes.c_uint32(0))
+        f.write(ctypes.c_uint32(0))     # smoothed normals
+        f.write(ctypes.c_uint32(0))
+        f.write(ctypes.c_uint32(0))
+
+    def write_geometrygroups(self, f):
+        f.write(ctypes.c_uint32(8))     # chunk_id (geometry groups)
+        f.write(ctypes.c_uint32(12))    # chunk_length
+        f.write(ctypes.c_uint32(0))
+        f.write(ctypes.c_uint32(0))
+        f.write(ctypes.c_uint32(0))
+
+    def write_mappinggroups(self, f):
+        f.write(ctypes.c_uint32(7))     # chunk_id (mapping groups)
+        f.write(ctypes.c_uint32(4))     # chunk_length
+        f.write(ctypes.c_uint32(0))     # num mapping groups
+
+    def write_facelayers(self, f):
+        f.write(ctypes.c_uint32(6))     # chunk_id (face layers)
+        f.write(ctypes.c_uint32(12))    # chunk_length
+        f.write(ctypes.c_uint32(1))     # num_facelayers
+        f.write(ctypes.c_uint32(2))     # format
+        f.write(ctypes.c_uint32(0))     # has_layers
+
+    def write_faces(self, f):
+        f.write(ctypes.c_uint32(3))                     # chunk_id (faces)
+        f.write(ctypes.c_uint32(64))                    # chunk_length
+        f.write(ctypes.c_uint32(1))                     # number of faces
+        f.write(ctypes.c_float(0))                      # angle
+        f.write(ctypes.c_float(0))                      # offset 1
+        f.write(ctypes.c_float(0))                      # offset 2
+        f.write(ctypes.c_float(1.2303149700164795))     # scale 1
+        f.write(ctypes.c_float(1.2303149700164795))     # scale 2
+        f.write(ctypes.c_uint32(4294967295))            # mapping_group_id
+        f.write(ctypes.c_uint32(0))                     # material_id
+        f.write(ctypes.c_uint32(0))                     # number of additional edgeloops
+        # the border edgeloop
+        f.write(ctypes.c_uint32(3))     # number of edges in the border edgeloop
+        f.write(ctypes.c_uint32(0))     # is_flipped
+        f.write(ctypes.c_uint32(2))     # edge index
+        f.write(ctypes.c_uint32(0))     # is_flipped
+        f.write(ctypes.c_uint32(0))     # edge index
+        f.write(ctypes.c_uint32(0))     # is_flipped
+        f.write(ctypes.c_uint32(1))     # edge index
+
+    def write_edges(self, f):
+        f.write(ctypes.c_uint32(2))     # chunk_id (edges)
+        f.write(ctypes.c_uint32(31))    # chunk_length
+        f.write(ctypes.c_uint32(3))     # number of edges
+        f.write(ctypes.c_uint32(0))     # v1 of edge 1
+        f.write(ctypes.c_uint32(1))     # v2 of edge 1
+        f.write(ctypes.c_ubyte(0))      # is_flipped
+        f.write(ctypes.c_uint32(1))     # v1 of edge 2
+        f.write(ctypes.c_uint32(2))     # v2 of edge 2
+        f.write(ctypes.c_ubyte(0))      # is_flipped
+        f.write(ctypes.c_uint32(2))     # v1 of edge 3
+        f.write(ctypes.c_uint32(0))     # v2 of edge 3
+        f.write(ctypes.c_ubyte(0))      # is_flipped
+
+    def write_vertices(self, f):
+        f.write(ctypes.c_uint32(1))     # chunk_id (vertices)
+        f.write(ctypes.c_uint32(43))    # chunk_length
+        f.write(ctypes.c_uint32(3))     # number of vertices
+        f.write(ctypes.c_float(0.0))    # vertex 1 (index=0)
+        f.write(ctypes.c_float(0.0))
+        f.write(ctypes.c_float(0.0))
+        f.write(ctypes.c_ubyte(0))
+        f.write(ctypes.c_float(0.0))    # vertex 2 (index=1)
+        f.write(ctypes.c_float(0.0))
+        f.write(ctypes.c_float(3.0))
+        f.write(ctypes.c_ubyte(0))
+        f.write(ctypes.c_float(0.0))    # vertex 3 (index=2)
+        f.write(ctypes.c_float(4.0))
+        f.write(ctypes.c_float(0.0))
+        f.write(ctypes.c_ubyte(0))
+
+    def write_materials(self, f):
+
+        chunk_id = 4
+        num_materials = 1
+        material_filepath = u"materials/dev/dev_floor_grid.material"
+        material_filepath_length = len(material_filepath)
+        chunk_length = 8 + material_filepath_length
+
+        f.write(ctypes.c_uint32(chunk_id))
+        f.write(ctypes.c_uint32(chunk_length))
+        f.write(ctypes.c_uint32(num_materials))
+        f.write(ctypes.c_uint32(material_filepath_length))
+        f.write(material_filepath.encode("utf-8"))
+
+    def write_header(self, f):
+        f.write("LVL".encode("utf-8"))  # magic number
+        f.write(ctypes.c_ubyte(10))     # version
+
+    def write_chunk_mesh(self, f):
+        f.write(ctypes.c_uint32(2))     # chunk_id (mesh)
+        f.write(ctypes.c_uint32(319))   # chunk_length = 43 + 31 + 64 + 45 + 44 + 12 + 4 + 12 + 8*8 = 319
+
+        self.write_materials(f)
+        self.write_vertices(f)
+        self.write_edges(f)
+        self.write_faces(f)
+        self.write_facelayers(f)
+        self.write_mappinggroups(f)
+        self.write_geometrygroups(f)
+        self.write_triangles(f)
+
+    def write_editorsettings(self, f):
+
+        with open("chunkeditorsettings.bin", "rb") as fh:
+            editor_settings_data = fh.read()
+            f.write(editor_settings_data)
+
     def write_level(self, filename):
         with open(filename, "wb") as f:
 
-            f.write("LVL".encode("utf-8"))  # magic number
-            f.write(ctypes.c_ubyte(10))     # version
-
-            f.write(ctypes.c_uint32(2))     # chunk_id (mesh)
-            f.write(ctypes.c_uint32(318))    # chunk_length = 43 + 31 + 64 + 44 + 44 + 12 + 4 + 12 + 8*8 = 318
-
-            # VERTICES
-
-            f.write(ctypes.c_uint32(1))     # chunk_id (vertices)
-            f.write(ctypes.c_uint32(43))    # chunk_length
-
-            f.write(ctypes.c_uint32(3))     # number of vertices
-
-            f.write(ctypes.c_float(0.0))    # vertex 1 (index=0)
-            f.write(ctypes.c_float(0.0))
-            f.write(ctypes.c_float(0.0))
-            f.write(ctypes.c_ubyte(0))
-
-            f.write(ctypes.c_float(0.0))    # vertex 2 (index=1)
-            f.write(ctypes.c_float(0.0))
-            f.write(ctypes.c_float(3.0))
-            f.write(ctypes.c_ubyte(0))
-
-            f.write(ctypes.c_float(0.0))    # vertex 3 (index=2)
-            f.write(ctypes.c_float(3.0))
-            f.write(ctypes.c_float(0.0))
-            f.write(ctypes.c_ubyte(0))
-
-            # EDGES
-
-            f.write(ctypes.c_uint32(2))     # chunk_id (edges)
-            f.write(ctypes.c_uint32(31))    # chunk_length
-
-            f.write(ctypes.c_uint32(3))     # number of edges
-
-            f.write(ctypes.c_uint32(0))      # v1 of edge 1
-            f.write(ctypes.c_uint32(1))      # v2 of edge 1
-            f.write(ctypes.c_ubyte(0))       # is_flipped
-
-            f.write(ctypes.c_uint32(1))      # v1 of edge 2
-            f.write(ctypes.c_uint32(2))      # v2 of edge 2
-            f.write(ctypes.c_ubyte(0))       # is_flipped
-
-            f.write(ctypes.c_uint32(2))      # v1 of edge 3
-            f.write(ctypes.c_uint32(0))      # v2 of edge 3
-            f.write(ctypes.c_ubyte(0))       # is_flipped
-
-            # FACES
-
-            f.write(ctypes.c_uint32(3))     # chunk_id (faces)
-            f.write(ctypes.c_uint32(64))    # chunk_length
-
-            f.write(ctypes.c_uint32(1))     # number of faces
-
-            f.write(ctypes.c_float(0))     # angle
-            f.write(ctypes.c_float(0))     # offset 1
-            f.write(ctypes.c_float(0))     # offset 2
-            f.write(ctypes.c_float(0.3075787425041199))     # scale 1
-            f.write(ctypes.c_float(0.3075787425041199))     # scale 2
-            f.write(ctypes.c_uint32(4294967295))       # mapping_group_id
-            f.write(ctypes.c_uint32(0))       # material_id
-            f.write(ctypes.c_uint32(0))       # number of additional edgeloops
-
-            # the border edgeloop
-            f.write(ctypes.c_uint32(3))     # number of edges in the border edgeloop
-
-            f.write(ctypes.c_uint32(1))     # is_flipped
-            f.write(ctypes.c_uint32(1))     # edge index
-
-            f.write(ctypes.c_uint32(1))     # is_flipped
-            f.write(ctypes.c_uint32(0))     # edge index
-
-            f.write(ctypes.c_uint32(1))     # is_flipped
-            f.write(ctypes.c_uint32(2))     # edge index
-
-            # MATERIALS
-
-            f.write(ctypes.c_uint32(4))     # chunk_id (materials)
-            f.write(ctypes.c_uint32(44))    # chunk_length
-
-            f.write(ctypes.c_uint32(1))    # number of materials
-            f.write(ctypes.c_uint32(36))      # number of characters in material filename (including path)
-            f.write(u"materials/dev/dev_1024x1024.material".encode("utf-8")) # material filename (including path)
-
-            # TRIANGLES
-
-            f.write(ctypes.c_uint32(5))     # chunk_id (triangles)
-            f.write(ctypes.c_uint32(44))    # chunk_length
-
-            f.write(ctypes.c_uint32(0))     # number of ghost vertices
-            f.write(ctypes.c_uint32(0))     # number of smoothed normals
-            f.write(ctypes.c_uint32(1))     # number of faces
-            f.write(ctypes.c_uint32(1))     # number of triangles (total)
-            f.write(ctypes.c_uint32(1))     # number of triangles (this face)
-
-            f.write(ctypes.c_uint32(2))     # vertex indices
-            f.write(ctypes.c_uint32(1))
-            f.write(ctypes.c_uint32(0))
-
-            f.write(ctypes.c_uint32(0))     # smoothed normals
-            f.write(ctypes.c_uint32(0))
-            f.write(ctypes.c_uint32(0))
-
-            # FACE LAYERS
-
-            f.write(ctypes.c_uint32(6))     # chunk_id (face layers)
-            f.write(ctypes.c_uint32(12))    # chunk_length
-
-            f.write(ctypes.c_uint32(1))     # num_facelayers
-            f.write(ctypes.c_uint32(2))     # format
-            f.write(ctypes.c_uint32(0))     # has_layers
-
-            # MAPPING GROUPS
-
-            f.write(ctypes.c_uint32(7))     # chunk_id (mapping groups)
-            f.write(ctypes.c_uint32(4))    # chunk_length
-
-            f.write(ctypes.c_uint32(0))     # num mapping groups
-
-            # GEOMETRY GROUPS
-
-            f.write(ctypes.c_uint32(8))     # chunk_id (geometry groups)
-            f.write(ctypes.c_uint32(12))    # chunk_length
-
-            f.write(ctypes.c_uint32(0))
-            f.write(ctypes.c_uint32(0))
-            f.write(ctypes.c_uint32(0))
-
-            # MESH CHUNK ENDS HERE
-
-            # VIEWPORT
-
-            viewport_data = self.viewport[0]
-            wide_string = viewport_data.encode("utf-16le")
-            wide_string_length = len(wide_string)
-
-            f.write(ctypes.c_uint32(4))                                     # chunk_id (viewport)
-            f.write(ctypes.c_uint32(wide_string_length+4))        # chunk_length
-
-            f.write(ctypes.c_uint32(wide_string_length / 2))          # length of utf-8 encoded xml in unicode characters
-            f.write(wide_string)
-
-            # EDITOR SETTINGS
-
-            editor_settings_data = self.editorsettings[0]
-            editor_settings_data_length = len(editor_settings_data)
-
-            f.write(ctypes.c_uint32(7))                                     # chunk_id (editor settings)
-            f.write(ctypes.c_uint32(editor_settings_data_length))             # chunk_length
-
-            f.write(editor_settings_data)
+            self.write_header(f)
+            self.write_chunk_mesh(f)
+            self.write_viewport(f)
+            self.write_editorsettings(f)
 
     def read_level(self, filename):
         parser = LevelParser(filename)
@@ -216,6 +198,7 @@ class LevelReader(object):
         #print("Loaded %d mapping_groups." % len(mapping_groups))
         #print("Loaded %d geometry_groups." % len(geometry_groups))
 
+        #pprint.pprint(materials)
         #pprint.pprint(faces)
         #pprint.pprint(face_triangles)
 
@@ -256,8 +239,6 @@ class LevelReader(object):
         self.materials = materials
         self.viewport = viewport
         self.editorsettings = editorsettings
-
-        pprint.pprint(materials)
 
         v1 = Vertex(2.0, 2.0, 2.0)
         v2 = Vertex(2.0, 2.0, 4.0)
