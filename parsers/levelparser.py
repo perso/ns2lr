@@ -1,7 +1,8 @@
 import os
+import io
 import errors
 
-from parsers.binaryparser import BinaryParser
+from parsers.binaryreader import BinaryReader
 
 from parsers.chunkobjectparser import ChunkObjectParser
 from parsers.chunkmeshparser import ChunkMeshParser
@@ -38,10 +39,10 @@ class ChunkParser(object):
     def parse_chunk(self):
         return self.chunk_parser.parse()
 
-class LevelParser(BinaryParser):
+class LevelParser(BinaryReader):
     def __init__(self, filename):
         self.filename = filename
-        with open(self.filename, "rb") as f:
+        with io.open(self.filename, "rb") as f:
             level_data = f.read()
         super(LevelParser, self).__init__(level_data)
         self.elements = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[] }

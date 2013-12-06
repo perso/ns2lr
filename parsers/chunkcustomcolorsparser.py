@@ -1,7 +1,7 @@
-from parsers.binaryparser import BinaryParser
+from parsers.binaryreader import BinaryReader
 
 
-class ChunkCustomColorsParser(BinaryParser):
+class ChunkCustomColorsParser(BinaryReader):
 
     def __init__(self, data, version):
         super(ChunkCustomColorsParser, self).__init__(data)

@@ -3,7 +3,7 @@ from errors import IOError
 import errors
 
 
-class BinaryParser(object):
+class BinaryReader(object):
 
     def __init__(self, data):
         self.data = data

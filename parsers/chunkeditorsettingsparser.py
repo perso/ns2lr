@@ -1,7 +1,7 @@
-from parsers.binaryparser import BinaryParser
+from parsers.binaryreader import BinaryReader
 
 
-class ChunkEditorSettingsParser(BinaryParser):
+class ChunkEditorSettingsParser(BinaryReader):
 
     def __init__(self, data, version):
         super(ChunkEditorSettingsParser, self).__init__(data)

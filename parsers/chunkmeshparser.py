@@ -1,9 +1,9 @@
 import pprint
 import errors
-from parsers.binaryparser import BinaryParser
+from parsers.binaryreader import BinaryReader
 
 
-class ChunkMeshParser(BinaryParser):
+class ChunkMeshParser(BinaryReader):
 
     def __init__(self, data, version):
         super(ChunkMeshParser, self).__init__(data)

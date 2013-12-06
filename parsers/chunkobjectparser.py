@@ -1,8 +1,8 @@
-from parsers.binaryparser import BinaryParser
+from parsers.binaryreader import BinaryReader
 import errors
 
 
-class ChunkObjectParser(BinaryParser):
+class ChunkObjectParser(BinaryReader):
     def __init__(self, data, version):
         super(ChunkObjectParser, self).__init__(data)
         self.version = version

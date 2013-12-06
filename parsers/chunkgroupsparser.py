@@ -1,7 +1,7 @@
-from parsers.binaryparser import BinaryParser
+from parsers.binaryreader import BinaryReader
 
 
-class ChunkGroupsParser(BinaryParser):
+class ChunkGroupsParser(BinaryReader):
 
     def __init__(self, data, version):
         super(ChunkGroupsParser, self).__init__(data)

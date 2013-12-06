@@ -5,7 +5,9 @@ from ctypes import c_ubyte
 import pprint
 import sys
 import ctypes
+import io
 from elements.Elements import *
+from parsers.binarywriter import BinaryWriter
 from parsers.levelparser import LevelParser
 
 
@@ -25,7 +27,7 @@ class LevelReader(object):
 
     def write_viewport(self, f):
 
-        with open("chunkviewport.bin", "rb") as fh:
+        with io.open("chunkviewport.bin", "rb") as fh:
             viewport_data = fh.read()
             f.write(viewport_data)
 
@@ -63,102 +65,100 @@ class LevelReader(object):
         f.write(ctypes.c_uint32(2))     # format
         f.write(ctypes.c_uint32(0))     # has_layers
 
-    def write_faces(self, f):
-        f.write(ctypes.c_uint32(3))                     # chunk_id (faces)
-        f.write(ctypes.c_uint32(64))                    # chunk_length
-        f.write(ctypes.c_uint32(1))                     # number of faces
-        f.write(ctypes.c_float(0))                      # angle
-        f.write(ctypes.c_float(0))                      # offset 1
-        f.write(ctypes.c_float(0))                      # offset 2
-        f.write(ctypes.c_float(1.2303149700164795))     # scale 1
-        f.write(ctypes.c_float(1.2303149700164795))     # scale 2
-        f.write(ctypes.c_uint32(4294967295))            # mapping_group_id
-        f.write(ctypes.c_uint32(0))                     # material_id
-        f.write(ctypes.c_uint32(0))                     # number of additional edgeloops
-        # the border edgeloop
-        f.write(ctypes.c_uint32(3))     # number of edges in the border edgeloop
-        f.write(ctypes.c_uint32(0))     # is_flipped
-        f.write(ctypes.c_uint32(2))     # edge index
-        f.write(ctypes.c_uint32(0))     # is_flipped
-        f.write(ctypes.c_uint32(0))     # edge index
-        f.write(ctypes.c_uint32(0))     # is_flipped
-        f.write(ctypes.c_uint32(1))     # edge index
+    def write_faces(self, stream, faces):
+        chunk_id = 3
+        num_faces = len(faces)
+        chunk_length = 64
+        stream.write_unsigned_int32(chunk_id)
+        stream.write_unsigned_int32(chunk_length)
+        stream.write_unsigned_int32(num_faces)
+        for face in faces:
+            face.write(stream)
 
-    def write_edges(self, f):
-        f.write(ctypes.c_uint32(2))     # chunk_id (edges)
-        f.write(ctypes.c_uint32(31))    # chunk_length
-        f.write(ctypes.c_uint32(3))     # number of edges
-        f.write(ctypes.c_uint32(0))     # v1 of edge 1
-        f.write(ctypes.c_uint32(1))     # v2 of edge 1
-        f.write(ctypes.c_ubyte(0))      # is_flipped
-        f.write(ctypes.c_uint32(1))     # v1 of edge 2
-        f.write(ctypes.c_uint32(2))     # v2 of edge 2
-        f.write(ctypes.c_ubyte(0))      # is_flipped
-        f.write(ctypes.c_uint32(2))     # v1 of edge 3
-        f.write(ctypes.c_uint32(0))     # v2 of edge 3
-        f.write(ctypes.c_ubyte(0))      # is_flipped
+    def write_edges(self, stream, edges):
+        chunk_id = 2
+        num_edges = len(edges)
+        chunk_length = 4 + (num_edges * 9)
+        stream.write_unsigned_int32(chunk_id)
+        stream.write_unsigned_int32(chunk_length)
+        stream.write_unsigned_int32(num_edges)
+        for edge in edges:
+            edge.write(stream)
 
-    def write_vertices(self, f):
-        f.write(ctypes.c_uint32(1))     # chunk_id (vertices)
-        f.write(ctypes.c_uint32(43))    # chunk_length
-        f.write(ctypes.c_uint32(3))     # number of vertices
-        f.write(ctypes.c_float(0.0))    # vertex 1 (index=0)
-        f.write(ctypes.c_float(0.0))
-        f.write(ctypes.c_float(0.0))
-        f.write(ctypes.c_ubyte(0))
-        f.write(ctypes.c_float(0.0))    # vertex 2 (index=1)
-        f.write(ctypes.c_float(0.0))
-        f.write(ctypes.c_float(3.0))
-        f.write(ctypes.c_ubyte(0))
-        f.write(ctypes.c_float(0.0))    # vertex 3 (index=2)
-        f.write(ctypes.c_float(4.0))
-        f.write(ctypes.c_float(0.0))
-        f.write(ctypes.c_ubyte(0))
+    def write_vertices(self, stream, vertices):
+        chunk_id = 1
+        num_vertices = len(vertices)
+        chunk_length = 4 + (num_vertices * 13)
+        stream.write_unsigned_int32(chunk_id)
+        stream.write_unsigned_int32(chunk_length)
+        stream.write_unsigned_int32(num_vertices)
+        for vertex in vertices:
+            vertex.write(stream)
 
-    def write_materials(self, f):
+    def write_materials(self, stream):
 
         chunk_id = 4
         num_materials = 1
-        material_filepath = u"materials/dev/dev_floor_grid.material"
+        material_filepath = "materials/dev/dev_floor_grid.material"
         material_filepath_length = len(material_filepath)
         chunk_length = 8 + material_filepath_length
 
-        f.write(ctypes.c_uint32(chunk_id))
-        f.write(ctypes.c_uint32(chunk_length))
-        f.write(ctypes.c_uint32(num_materials))
-        f.write(ctypes.c_uint32(material_filepath_length))
-        f.write(material_filepath.encode("utf-8"))
+        stream.write_unsigned_int32(chunk_id)
+        stream.write_unsigned_int32(chunk_length)
+        stream.write_unsigned_int32(num_materials)
+        stream.write_unsigned_int32(material_filepath_length)
+        stream.write_string(material_filepath)
 
-    def write_header(self, f):
-        f.write("LVL".encode("utf-8"))  # magic number
-        f.write(ctypes.c_ubyte(10))     # version
+    def write_header(self, stream):
+        stream.write_string("LVL")
+        stream.write_unsigned_char8(10)
 
-    def write_chunk_mesh(self, f):
-        f.write(ctypes.c_uint32(2))     # chunk_id (mesh)
-        f.write(ctypes.c_uint32(319))   # chunk_length = 43 + 31 + 64 + 45 + 44 + 12 + 4 + 12 + 8*8 = 319
+    def write_chunk_mesh(self, stream):
 
-        self.write_materials(f)
-        self.write_vertices(f)
-        self.write_edges(f)
-        self.write_faces(f)
-        self.write_facelayers(f)
-        self.write_mappinggroups(f)
-        self.write_geometrygroups(f)
-        self.write_triangles(f)
+        stream.write_unsigned_int32(2)   # chunk_id
+        stream.write_unsigned_int32(319) # chunk_length = 43 + 31 + 64 + 45 + 44 + 12 + 4 + 12 + 8*8 = 319
+
+        self.write_materials(stream)
+
+        v1 = Vertex(2.0, 3.0, 5.0)
+        v2 = Vertex(1.5, -2.5, 2.0)
+        v3 = Vertex(6.0, 2.0, 1.0)
+        self.write_vertices(stream, [v1, v2, v3])
+
+        e1 = Edge(v1, v2)
+        e2 = Edge(v2, v3)
+        e3 = Edge(v3, v1)
+        self.write_edges(stream, [e1, e2, e3])
+
+        edgeloop = EdgeLoop()
+        edgeloop.add_edge(e1)
+        edgeloop.add_edge(e2)
+        edgeloop.add_edge(e3)
+        self.write_faces(stream, [edgeloop])
+
+
+        self.write_facelayers(stream)
+        self.write_mappinggroups(stream)
+        self.write_geometrygroups(stream)
+        self.write_triangles(stream)
 
     def write_editorsettings(self, f):
 
-        with open("chunkeditorsettings.bin", "rb") as fh:
+        with io.open("chunkeditorsettings.bin", "rb") as fh:
             editor_settings_data = fh.read()
             f.write(editor_settings_data)
 
     def write_level(self, filename):
-        with open(filename, "wb") as f:
-
-            self.write_header(f)
-            self.write_chunk_mesh(f)
-            self.write_viewport(f)
-            self.write_editorsettings(f)
+        #with io.open(filename, "wb") as f:
+        #    self.write_header(f)
+        #    self.write_chunk_mesh(f)
+        #    self.write_viewport(f)
+        #    self.write_editorsettings(f)
+        stream = BinaryWriter(filename)
+        self.write_header(stream)
+        self.write_chunk_mesh(stream)
+        #self.write_viewport(stream)
+        #self.write_editorsettings(stream)
 
     def read_level(self, filename):
         parser = LevelParser(filename)

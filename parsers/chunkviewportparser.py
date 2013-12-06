@@ -1,7 +1,7 @@
-from parsers.binaryparser import BinaryParser
+from parsers.binaryreader import BinaryReader
 
 
-class ChunkViewportParser(BinaryParser):
+class ChunkViewportParser(BinaryReader):
 
     def __init__(self, data, version):
         super(ChunkViewportParser, self).__init__(data)
