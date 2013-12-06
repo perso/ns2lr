@@ -1,18 +1,161 @@
 import ctypes
+from struct import pack, calcsize
 
 
-class SparkDataBlock(object):
+class Level(object):
 
     def __init__(self):
         pass
 
     def write(self):
-        raise NotImplementedError()
+        pass
+
+class ChunkHeader(object):
+
+    def __init__(self, version):
+        self.version = version
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        return "LVL".encode("utf-8") + pack("B", self.version)
+
+class ChunkMesh(object):
+
+    def __init__(self, vertices=[], edges=[], faces=[]):
+        self.id = 2
+        self.chunk_vertices = ChunkVertices(vertices)
+        self.chunk_edges = ChunkEdges(edges)
+        self.chunk_faces = ChunkFaces(faces)
+
+    def get_length(self):
+        length = 4
+        length += self.chunk_vertices.get_length()
+
+    def dump(self):
+        data = pack("II", self.id, self.get_length())
+        data += self.chunk_vertices.dump()
+        return data
+
+class ChunkGeometrygroups(object):
+
+    def __init__(self):
+        pass
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        pass
+
+class ChunkMappinggroups(object):
+
+    def __init__(self):
+        pass
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        pass
+
+class ChunkFacelayers(object):
+
+    def __init__(self):
+        pass
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        pass
+
+class ChunkFaces(object):
+
+    def __init__(self, faces):
+        self.id = 3
+        self.faces = faces
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        pass
+
+class ChunkEdges(object):
+
+    def __init__(self, edges):
+        self.id = 2
+        self.edges = edges
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        pass
+
+class ChunkVertices(object):
+
+    def __init__(self, vertices):
+        self.id = 1
+        self.vertices = vertices
+        self.format = "III"
+
+    def get_length(self):
+        length = calcsize(self.format) - 8
+        for vertex in self.vertices:
+            length += vertex.get_length()
+        return length
+
+    def dump(self):
+        chunk_length = self.get_length()
+        bytes = pack(self.format, self.id, chunk_length, len(self.vertices))
+        for vertex in self.vertices:
+            bytes += vertex.dump()
+        return bytes
+
+class ChunkTriangles(object):
+
+    def __init__(self):
+        self.id = 5
+        self.triangles = []
+        self.ghostvertices = []
+        self.smoothednormals = []
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        chunk_length = self.get_length()
+        bytes = pack("II", self.id, chunk_length)
+        bytes += len(self.ghostvertices)
+        for vertex in self.ghostvertices:
+            bytes += vertex.dump()
+        bytes += len(self.smoothednormals)
+        for vector in self.smoothednormals:
+            bytes += vector.dump()
+        bytes += len(self.triangles)
+        for triangle in self.triangles:
+            bytes += triangle.dump()
+        return bytes
+
+class ChunkMaterials(object):
+
+    def __init__(self):
+        self.chunk_id = 4
+        self.materials = []
+
+    def dump(self):
+        data = pack("III", self.chunk_id, self.get_length(), len(self.materials))
+        for material in self.materials:
+            data += material.dump()
+        return data
 
     def load(self):
-        raise NotImplementedError()
+        pass
 
-class Entity(SparkDataBlock):
+class Entity(object):
 
     def __init__(self, classname):
         self.classname = classname
@@ -20,41 +163,50 @@ class Entity(SparkDataBlock):
         self.layerdata = {}
         self.properties = {}
 
-class Vertex(SparkDataBlock):
+class Vector(object):
 
-    def __init__(self, id, x=0.0, y=0.0, z=0.0, smoothing=False):
-        self.id = id
+    def __init__(self, x=0.0, y=0.0, z=0.0):
         self.x = x
         self.y = y
         self.z = z
+        self.format = "fff"
+
+    def get_length(self):
+        pass
+
+    def dump(self):
+        return pack(self.format, self.x, self.y, self.z)
+
+class Vertex(Vector):
+
+    def __init__(self, id, x=0.0, y=0.0, z=0.0, smoothing=False):
+        self.id = id
+        super(Vertex, self).__init__(x, y, z)
         self.smoothing = smoothing
+        self.format = "fffB"
 
-    def write(self, stream):
-        stream.write_float32(self.x)
-        stream.write_float32(self.y)
-        stream.write_float32(self.z)
-        stream.write_unsigned_char8(self.smoothing)
+    def get_length(self):
+        return calcsize(self.format)
 
-    def load(self, stream):
-        self.x = stream.read_float32()
-        self.y = stream.read_float32()
-        self.z = stream.read_float32()
-        self.smoothing = bool(stream.read_unsigned_char8())
+    def dump(self):
+        return pack(self.format, self.x, self.y, self.z, self.smoothing)
 
-class Edge(SparkDataBlock):
+class Edge(object):
 
     def __init__(self, id, v1, v2):
         self.id = id
         self.v1 = v1
         self.v2 = v2
         self.is_flipped = False
+        self.format = "IIB"
 
-    def write(self, stream):
-        stream.write_unsigned_int32(self.v1)
-        stream.write_unsigned_int32(self.v2)
-        stream.write_unsigned_char8(int(self.is_flipped))
+    def get_length(self):
+        return calcsize(self.format)
 
-class Group(SparkDataBlock):
+    def dump(self):
+        return pack(self.format, self.v1.id, self.v2.id, self.is_flipped)
+
+class Group(object):
 
     def __init__(self, id, name):
         self.id = id
@@ -62,29 +214,24 @@ class Group(SparkDataBlock):
         self.color = None
         self.is_visible = True
 
-class EdgeLoop(SparkDataBlock):
+    def get_length(self):
+        pass
 
-    def __init__(self):
-        self.edges = []
+    def dump(self):
+        pass
 
-    def add_edge(self, edge):
-        self.edges.append(edge)
+class EdgeLoop(object):
 
-    def write(self, stream):
-        stream.write_unsigned_int32(len(self.edges))
+    def __init__(self, *edges):
+        self.edges = list(edges)
+
+    def dump(self):
+        data = pack("I", len(self.edges))
         for edge in self.edges:
-            stream.write_unsigned_int32(edge.is_flipped)
-            stream.write_unsigned_int32(edge.id)
+            data += edge.dump()
+        return data
 
-        f.write(ctypes.c_uint32(3))     # number of edges in the border edgeloop
-        f.write(ctypes.c_uint32(0))     # is_flipped
-        f.write(ctypes.c_uint32(2))     # edge index
-        f.write(ctypes.c_uint32(0))     # is_flipped
-        f.write(ctypes.c_uint32(0))     # edge index
-        f.write(ctypes.c_uint32(0))     # is_flipped
-        f.write(ctypes.c_uint32(1))     # edge index
-
-class Face(SparkDataBlock):
+class Face(object):
 
     def __init__(self, id, border_edgeloop):
         self.id = id
@@ -96,50 +243,36 @@ class Face(SparkDataBlock):
         self.mapping_group = -1
         self.material = -1
 
-    def write(self, stream):
-        stream.write_float32(self.angle)
-        stream.write_float32(self.offset[0])
-        stream.write_float32(self.offset[1])
-        stream.write_float32(self.scale[0])
-        stream.write_float32(self.scale[1])
-        stream.write_unsigned_int32(self.mapping_group)
-        stream.write_unsigned_int32(self.material)
-        stream.write_unsigned_int32(len(self.edgeloops))
-        self.border_edgeloop.write(stream)
+    def get_length(self):
+        pass
+
+    def dump(self):
+        data = pack("fffffIII", self.angle, self.offset[0], self.offset[1], self.scale[0], self.scale[1],
+                                self.mapping_group, self.material, len(self.edgeloops))
+        data += self.border_edgeloop.dump()
         for edgeloop in self.edgeloops:
-            edgeloop.write(stream)
+            data += edgeloop.dump()
+        return data
 
-class Triangle(SparkDataBlock):
+class Triangle(object):
 
-    def __init__(self, vi_1, vi_2, vi_3):
+    def __init__(self, vi_1, vi_2, vi_3, sni_1=0, sni_2=0, sni_3=0):
         self.vi_1 = vi_1
         self.vi_2 = vi_2
         self.vi_3 = vi_3
-        self.sni_1 = 0
-        self.sni_2 = 0
-        self.sni_3 = 0
+        self.sni_1 = sni_1
+        self.sni_2 = sni_2
+        self.sni_3 = sni_3
+        self.format = "IIIIII"
 
     def set_smoothed_normals(self, sni_1, sni_2, sni_3):
         self.sni_1 = sni_1
         self.sni_2 = sni_2
         self.sni_3 = sni_3
 
-    def write(self, stream):
+    def get_length(self):
         pass
 
-class Material(SparkDataBlock):
-
-    def __init__(self):
-        self.chunk_id = 4
-
-    def write(self, stream):
-        b_repr = b""
-        b_repr += ctypes.c_uint32(chunk_id)
-        b_repr += ctypes.c_uint32(chunk_length)
-        b_repr += ctypes.c_uint32(num_materials)
-        b_repr += ctypes.c_uint32(material_filepath_length)
-        b_repr += material_filepath.encode("utf-8")
-        return b_repr
-
-    def load(self):
-        pass
+    def dump(self):
+        data = pack(self.format, self.vi_1, self.vi_2, self.vi_3, self.sni_1, self.sni_2, self.sni_3)
+        return data

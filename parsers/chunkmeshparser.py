@@ -69,7 +69,7 @@ class ChunkMeshParser(BinaryReader):
         return mesh_data
 
     def parse_chunk_vertices(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         vertices = []
         num_vertices = parser.read_unsigned_int32()
         for i in range(num_vertices):
@@ -86,7 +86,7 @@ class ChunkMeshParser(BinaryReader):
         return vertices
 
     def parse_chunk_edges(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         edges = []
         num_edges = parser.read_unsigned_int32()
         for i in range(num_edges):
@@ -101,7 +101,7 @@ class ChunkMeshParser(BinaryReader):
         return edges
 
     def parse_chunk_faces(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         faces = []
         num_faces = parser.read_unsigned_int32()
         for i in range(num_faces):
@@ -135,7 +135,7 @@ class ChunkMeshParser(BinaryReader):
         return edgeloop
 
     def parse_chunk_materials(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         materials = []
         num_materials = parser.read_unsigned_int32()
         for i in range(num_materials):
@@ -145,7 +145,7 @@ class ChunkMeshParser(BinaryReader):
         return materials
 
     def parse_chunk_triangles(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         ghost_vertices = []
         num_ghost_vertices = parser.read_unsigned_int32()
         for i in range(num_ghost_vertices):
@@ -197,7 +197,7 @@ class ChunkMeshParser(BinaryReader):
         return facelayers
 
     def parse_chunk_mappinggroups(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         mappinggroups = {}
         num_mappinggroups = parser.read_unsigned_int32()
         for i in range(num_mappinggroups):
@@ -215,7 +215,7 @@ class ChunkMeshParser(BinaryReader):
         return mappinggroups
 
     def parse_chunk_geometrygroups(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         vertexgroups = {}
         num_vertexgroups = parser.read_unsigned_int32()
         for i in range(num_vertexgroups):

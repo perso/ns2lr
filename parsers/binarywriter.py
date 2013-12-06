@@ -47,3 +47,6 @@ class BinaryWriter(object):
     def read_color(self, data):
         packed = pack('BBBB', data)
         self.stream.write(packed)
+
+    def write_bytes(self, data):
+        self.stream.write(data)
