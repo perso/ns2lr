@@ -70,15 +70,27 @@ class LevelReader(object):
 
     def write_mesh(self, stream):
         #self.write_materials(stream, materials)
-        vertices = []
-        for i in range(5):
-            vertices.append(Vertex(i))
+        vertices = (
+            Vertex(0, 5.0, 0.0, 0.0),
+            Vertex(2, 0.0, 5.0, 0.0),
+            Vertex(3, 5.0, 0.0, 5.0),
+            Vertex(4, 0.0, 5.0, 5.0),
+        )
+        edges = (
+            Edge(0, vertices[0], vertices[1]),
+            Edge(1, vertices[1], vertices[2]),
+            Edge(2, vertices[2], vertices[0]),
+            Edge(3, vertices[2], vertices[3]),
+        )
+        faces = (
+            Face(0, EdgeLoop(edges[0], edges[1], edges[2])),
+            Face(1, EdgeLoop(edges[1], edges[2], edges[3])),
+        )
 
-        chunk = ChunkMesh(vertices=vertices)
-        chunk.vertices = vertices
+        chunk = ChunkMesh(vertices=vertices, edges=edges, faces=faces)
         stream.write(chunk.dump())
 
-        self.write_vertices(stream, vertices)
+        #self.write_vertices(stream, vertices)
         #self.write_edges(stream, edges)
         #self.write_faces(stream, faces)
         #self.write_facelayers(stream, facelayers)
