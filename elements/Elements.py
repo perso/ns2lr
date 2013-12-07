@@ -24,23 +24,24 @@ class ChunkHeader(object):
 
 class ChunkMesh(object):
 
-    def __init__(self, vertices=(), edges=(), faces=(), materials=(), facelayers=(), mappinggroups=(), geometrygroups=(), triangles={}):
+    def __init__(self, vertices=(), edges=(), faces=(), materials=(), facelayers=(), mappinggroups=(),
+                       geometrygroups=(), triangles={}, smoothednormals=(), ghostvertices=()):
         self.id = 2
-        self.chunks = {
-            "materials": ChunkMaterials(materials),
-            "vertices": ChunkVertices(vertices),
-            "edges": ChunkEdges(edges),
-            "faces": ChunkFaces(faces),
-            "facelayers": ChunkFacelayers(facelayers),
-            "mappinggroups": ChunkMappinggroups(mappinggroups),
-            "geometrygroups": ChunkGeometrygroups(geometrygroups),
-            "triangles": ChunkTriangles(triangles)
-        }
+        self.chunks = [
+            ChunkMaterials(materials),
+            ChunkVertices(vertices),
+            ChunkEdges(edges),
+            ChunkFaces(faces),
+            ChunkFacelayers(facelayers),
+            ChunkMappinggroups(mappinggroups),
+            ChunkGeometrygroups(geometrygroups),
+            ChunkTriangles(ghostvertices, smoothednormals, triangles)
+        ]
         self.format = "II"
 
     def get_length(self):
         length = 0
-        for chunk_name, chunk in list(self.chunks.items()):
+        for chunk in self.chunks:
             if not chunk.empty():
                 length += chunk.get_length()
         if length > 0:
@@ -52,7 +53,7 @@ class ChunkMesh(object):
         if self.get_length() > 0:
             chunk_length = self.get_length() - 8
             data += pack(self.format, self.id, chunk_length)
-            for chunk_name, chunk in list(self.chunks.items()):
+            for chunk in self.chunks:
                 if not chunk.empty():
                     data += chunk.dump()
         return data
@@ -60,44 +61,66 @@ class ChunkMesh(object):
 class ChunkGeometrygroups(object):
 
     def __init__(self, geometrygroups):
+        self.id = 8
         self.geometrygroups = geometrygroups
+        self.format = "IIIII"
 
     def empty(self):
-        return not self.geometrygroups
+        return False
 
     def get_length(self):
-        pass
+        return calcsize(self.format)
 
     def dump(self):
-        pass
+        chunk_length = self.get_length() - 8
+        num_vertexgroups = 0
+        num_edgegroups = 0
+        num_facegroups = 0
+        return pack(self.format, self.id, chunk_length, num_vertexgroups, num_edgegroups, num_facegroups)
 
 class ChunkMappinggroups(object):
 
     def __init__(self, mappinggroups):
+        self.id = 7
         self.mappinggroups = mappinggroups
+        self.format = "III"
 
     def empty(self):
-        return not self.mappinggroups
+        return False
 
     def get_length(self):
-        pass
+        return calcsize(self.format)
 
     def dump(self):
-        pass
+        chunk_length = self.get_length() - 8
+        num_mappinggroups = 0
+        return pack(self.format, self.id, chunk_length, num_mappinggroups)
 
 class ChunkFacelayers(object):
 
     def __init__(self, facelayers):
+        self.id = 6
         self.facelayers = facelayers
+        self.format = "IIII"
 
     def empty(self):
-        return not self.facelayers
+        return False
 
     def get_length(self):
-        pass
+        length = calcsize(self.format)
+        for facelayer in self.facelayers:
+            length += 4
+        return length
 
     def dump(self):
-        pass
+        chunk_length = self.get_length() - 8
+        num_facelayers = len(self.facelayers)
+        format = 2
+        data = pack(self.format, self.id, chunk_length, num_facelayers, format)
+        for facelayer in self.facelayers:
+            has_layers = facelayer["has_layers"]
+            data += pack("I", has_layers)
+        return data
 
 class ChunkFaces(object):
 
@@ -170,17 +193,28 @@ class ChunkVertices(object):
 
 class ChunkTriangles(object):
 
-    def __init__(self, triangles):
+    def __init__(self, ghostvertices, smoothednormals, triangles):
         self.id = 5
-        self.ghostvertices = triangles["ghostvertices"]
-        self.smoothednormals = triangles["smoothednormals"]
-        self.triangles = triangles["triangles"]
+        self.ghostvertices = ghostvertices
+        self.smoothednormals = smoothednormals
+        if triangles:
+            self.numtriangles = triangles["number"]
+            self.triangles = triangles["items"]
 
     def empty(self):
         return not (self.ghostvertices or self.smoothednormals or self.triangles)
 
     def get_length(self):
-        return 20
+        length = 6*4
+        for vertex in self.ghostvertices:
+            length += vertex.get_length()
+        for vector in self.smoothednormals:
+            length += vector.get_length()
+        for face_triangles in self.triangles:
+            length += 4
+            for triangle in face_triangles:
+                length += triangle.get_length()
+        return length
 
     def dump(self):
         chunk_length = self.get_length() - 8
@@ -191,9 +225,11 @@ class ChunkTriangles(object):
         bytes += pack("I", len(self.smoothednormals))
         for vector in self.smoothednormals:
             bytes += vector.dump()
-        bytes += pack("I", len(self.triangles))
-        for triangle in self.triangles:
-            bytes += triangle.dump()
+        bytes += pack("II", len(self.triangles), self.numtriangles)
+        for face_triangles in self.triangles:
+            bytes += pack("I", len(face_triangles))
+            for triangle in face_triangles:
+                bytes += triangle.dump()
         return bytes
 
 class ChunkMaterials(object):
@@ -224,7 +260,8 @@ class ChunkMaterials(object):
 
 class Vector(object):
 
-    def __init__(self, x=0.0, y=0.0, z=0.0):
+    def __init__(self, id=0, x=0.0, y=0.0, z=0.0):
+        self.id = id
         self.x = x
         self.y = y
         self.z = z
@@ -239,8 +276,7 @@ class Vector(object):
 class Vertex(Vector):
 
     def __init__(self, id, x=0.0, y=0.0, z=0.0, smoothing=False):
-        self.id = id
-        super(Vertex, self).__init__(x, y, z)
+        super(Vertex, self).__init__(id, x, y, z)
         self.smoothing = smoothing
         self.format = "fffB"
 
@@ -252,18 +288,18 @@ class Vertex(Vector):
 
 class Edge(object):
 
-    def __init__(self, id, v1, v2):
+    def __init__(self, id, v1, v2, smooth=False):
         self.id = id
         self.v1 = v1
         self.v2 = v2
-        self.is_flipped = False
+        self.smooth = smooth
         self.format = "IIB"
 
     def get_length(self):
         return calcsize(self.format)
 
     def dump(self):
-        return pack(self.format, self.v1.id, self.v2.id, int(self.is_flipped))
+        return pack(self.format, self.v1.id, self.v2.id, int(self.smooth))
 
 class Group(object):
 
@@ -294,12 +330,12 @@ class EdgeLoop(object):
     def dump(self):
         data = pack(self.format, len(self.edges))
         for edge in self.edges:
-            data += pack("II", int(edge.is_flipped), edge.id)
+            data += pack("II", int(edge["is_flipped"]), edge["edge"].id)
         return data
 
 class Face(object):
 
-    def __init__(self, id, border_edgeloop):
+    def __init__(self, id, border_edgeloop, material):
         self.id = id
         self.scale = (1.0, 1.0)
         self.offset = (0.0, 0.0)
@@ -307,7 +343,7 @@ class Face(object):
         self.border_edgeloop = border_edgeloop
         self.edgeloops = []
         self.mapping_group = 4294967295
-        self.material = 4294967295
+        self.material = material
         self.format = "fffffIII"
 
     def get_length(self):
@@ -336,23 +372,18 @@ class Face(object):
 
 class Triangle(object):
 
-    def __init__(self, vi_1, vi_2, vi_3, sni_1=0, sni_2=0, sni_3=0):
-        self.vi_1 = vi_1
-        self.vi_2 = vi_2
-        self.vi_3 = vi_3
-        self.sni_1 = sni_1
-        self.sni_2 = sni_2
-        self.sni_3 = sni_3
+    def __init__(self, v1, v2, v3, n1=Vector(), n2=Vector(), n3=Vector()):
+        self.v1 = v1
+        self.v2 = v2
+        self.v3 = v3
+        self.n1 = n1
+        self.n2 = n2
+        self.n3 = n3
         self.format = "IIIIII"
-
-    def set_smoothed_normals(self, sni_1, sni_2, sni_3):
-        self.sni_1 = sni_1
-        self.sni_2 = sni_2
-        self.sni_3 = sni_3
 
     def get_length(self):
         return calcsize(self.format)
 
     def dump(self):
-        data = pack(self.format, self.vi_1, self.vi_2, self.vi_3, self.sni_1, self.sni_2, self.sni_3)
+        data = pack(self.format, self.v1.id, self.v2.id, self.v3.id, self.n1.id, self.n2.id, self.n3.id)
         return data

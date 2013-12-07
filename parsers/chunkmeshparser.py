@@ -65,7 +65,7 @@ class ChunkMeshParser(BinaryReader):
             "mapping_groups": self.mapping_groups,
             "geometry_groups": self.geometry_groups
         }
-        #pprint.pprint(mesh_data)
+        pprint.pprint(mesh_data)
         return mesh_data
 
     def parse_chunk_vertices(self, chunk):
@@ -92,11 +92,11 @@ class ChunkMeshParser(BinaryReader):
         for i in range(num_edges):
             vi_1 = parser.read_unsigned_int32()
             vi_2 = parser.read_unsigned_int32()
-            is_flipped = bool(parser.read_unsigned_char8())
+            smooth = bool(parser.read_unsigned_char8())
             edges.append({
                 "vi_1": vi_1,
                 "vi_2": vi_2,
-                "is_flipped": is_flipped
+                "smooth": smooth
             })
         return edges
 
@@ -156,11 +156,11 @@ class ChunkMeshParser(BinaryReader):
         for i in range(num_smoothed_normals):
             smoothed_normal = parser.read_vec3_float32()
             smoothed_normals.append(smoothed_normal)
-        triangles = []
         num_faces = parser.read_unsigned_int32()
         num_triangles = parser.read_unsigned_int32()
+        triangles = {"number": num_triangles, "triangles": []}
         for i in range(num_faces):
-            triangles.append([])
+            triangles["triangles"].append([])
             num_face_triangles = parser.read_unsigned_int32()
             for j in range(num_face_triangles):
                 vertex_index1 = parser.read_unsigned_int32()
@@ -169,7 +169,7 @@ class ChunkMeshParser(BinaryReader):
                 smoothed_normal_index1 = parser.read_unsigned_int32()
                 smoothed_normal_index2 = parser.read_unsigned_int32()
                 smoothed_normal_index3 = parser.read_unsigned_int32()
-                triangles[i].append({
+                triangles["triangles"][i].append({
                     "vi_1": vertex_index1,
                     "vi_2": vertex_index2,
                     "vi_3": vertex_index3,

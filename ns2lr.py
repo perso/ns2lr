@@ -14,7 +14,7 @@ def main(args):
     filename = sys.argv[1]
     parser = LevelReader()
     #parser.read_level(filename)
-    #parser.read_level("C:\\Personal\\levels\\triangle.level")
+    parser.read_level("C:\\Personal\\levels\\written_edited.level")
     parser.write_level("C:\\Personal\\levels\\written.level")
     parser.read_level("C:\\Personal\\levels\\written.level")
 
