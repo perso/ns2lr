@@ -1,4 +1,5 @@
 import ctypes
+import pprint
 from struct import pack, calcsize
 
 
@@ -197,12 +198,14 @@ class ChunkTriangles(object):
         self.id = 5
         self.ghostvertices = ghostvertices
         self.smoothednormals = smoothednormals
+        self.total = 0
+        self.faces = []
         if triangles:
-            self.numtriangles = triangles["number"]
-            self.triangles = triangles["items"]
+            self.total = triangles["total"]
+            self.faces = triangles["faces"]
 
     def empty(self):
-        return not (self.ghostvertices or self.smoothednormals or self.triangles)
+        return not (self.ghostvertices or self.smoothednormals or self.faces)
 
     def get_length(self):
         length = 6*4
@@ -210,7 +213,7 @@ class ChunkTriangles(object):
             length += vertex.get_length()
         for vector in self.smoothednormals:
             length += vector.get_length()
-        for face_triangles in self.triangles:
+        for face_triangles in self.faces:
             length += 4
             for triangle in face_triangles:
                 length += triangle.get_length()
@@ -225,8 +228,8 @@ class ChunkTriangles(object):
         bytes += pack("I", len(self.smoothednormals))
         for vector in self.smoothednormals:
             bytes += vector.dump()
-        bytes += pack("II", len(self.triangles), self.numtriangles)
-        for face_triangles in self.triangles:
+        bytes += pack("II", len(self.faces), self.total)
+        for face_triangles in self.faces:
             bytes += pack("I", len(face_triangles))
             for triangle in face_triangles:
                 bytes += triangle.dump()
@@ -317,8 +320,8 @@ class Group(object):
 
 class EdgeLoop(object):
 
-    def __init__(self, *edges):
-        self.edges = list(edges)
+    def __init__(self, edges):
+        self.edges = edges
         self.format = "I"
 
     def get_length(self):

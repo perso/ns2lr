@@ -13,10 +13,10 @@ def main(args):
         sys.exit("Error: file %s was not found!" % (sys.argv[1]))
     filename = sys.argv[1]
     parser = LevelReader()
-    #parser.read_level(filename)
-    parser.read_level("C:\\Personal\\levels\\written_edited.level")
+    parser.read_level("C:\\Personal\\levels\\hmm.level")
+    #parser.read_level("C:\\Personal\\levels\\written_edited.level")
     parser.write_level("C:\\Personal\\levels\\written.level")
-    parser.read_level("C:\\Personal\\levels\\written.level")
+    #parser.read_level("C:\\Personal\\levels\\written.level")
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

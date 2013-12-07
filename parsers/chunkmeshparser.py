@@ -31,7 +31,7 @@ class ChunkMeshParser(BinaryReader):
             mesh_chunk_length = self.read_unsigned_int32()
             mesh_chunk = self.read_bytes(mesh_chunk_length)
 
-            print("\tid: %d, length: %d" % (mesh_chunk_id, len(mesh_chunk)))
+            #print("\tid: %d, length: %d" % (mesh_chunk_id, len(mesh_chunk)))
 
             if mesh_chunk_id == 1:
                 self.vertices = self.parse_chunk_vertices(mesh_chunk)
@@ -65,7 +65,6 @@ class ChunkMeshParser(BinaryReader):
             "mapping_groups": self.mapping_groups,
             "geometry_groups": self.geometry_groups
         }
-        pprint.pprint(mesh_data)
         return mesh_data
 
     def parse_chunk_vertices(self, chunk):
@@ -76,11 +75,9 @@ class ChunkMeshParser(BinaryReader):
             vec3 = parser.read_vec3_float32()
             has_smoothing = bool(parser.read_unsigned_char8())
             vertices.append({
-                "point": {
-                    "x": vec3[0],
-                    "y": vec3[1],
-                    "z": vec3[2]
-                },
+                "x": vec3[0],
+                "y": vec3[1],
+                "z": vec3[2],
                 "has_smoothing": has_smoothing
             })
         return vertices
