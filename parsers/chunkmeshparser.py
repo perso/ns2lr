@@ -180,7 +180,7 @@ class ChunkMeshParser(BinaryReader):
         return (ghost_vertices, smoothed_normals, triangles)
 
     def parse_chunk_facelayers(self, chunk):
-        parser = BinaryParser(chunk)
+        parser = BinaryReader(chunk)
         facelayers = []
         num_facelayers = parser.read_unsigned_int32()
         format = parser.read_unsigned_int32()

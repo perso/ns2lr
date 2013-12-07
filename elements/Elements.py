@@ -24,32 +24,46 @@ class ChunkHeader(object):
 
 class ChunkMesh(object):
 
-    def __init__(self, vertices=[], edges=[], faces=[]):
+    def __init__(self, vertices=(), edges=(), faces=(), materials=(), facelayers=(), mappinggroups=(), geometrygroups=(), triangles={}):
         self.id = 2
-        self.chunk_vertices = ChunkVertices(vertices)
-        self.chunk_edges = ChunkEdges(edges)
-        self.chunk_faces = ChunkFaces(faces)
+        self.chunks = {
+            "materials": ChunkMaterials(materials),
+            "vertices": ChunkVertices(vertices),
+            "edges": ChunkEdges(edges),
+            "faces": ChunkFaces(faces),
+            "facelayers": ChunkFacelayers(facelayers),
+            "mappinggroups": ChunkMappinggroups(mappinggroups),
+            "geometrygroups": ChunkGeometrygroups(geometrygroups),
+            "triangles": ChunkTriangles(triangles)
+        }
         self.format = "II"
 
     def get_length(self):
-        length = calcsize(self.format)
-        length += self.chunk_vertices.get_length()
-        length += self.chunk_edges.get_length()
-        length += self.chunk_faces.get_length()
+        length = 0
+        for chunk_name, chunk in list(self.chunks.items()):
+            if not chunk.empty():
+                length += chunk.get_length()
+        if length > 0:
+            length += calcsize(self.format)
         return length
 
     def dump(self):
-        chunk_length = self.get_length() - 8
-        data = pack(self.format, self.id, chunk_length)
-        data += self.chunk_vertices.dump()
-        data += self.chunk_edges.dump()
-        data += self.chunk_faces.dump()
+        data = b""
+        if self.get_length() > 0:
+            chunk_length = self.get_length() - 8
+            data += pack(self.format, self.id, chunk_length)
+            for chunk_name, chunk in list(self.chunks.items()):
+                if not chunk.empty():
+                    data += chunk.dump()
         return data
 
 class ChunkGeometrygroups(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, geometrygroups):
+        self.geometrygroups = geometrygroups
+
+    def empty(self):
+        return not self.geometrygroups
 
     def get_length(self):
         pass
@@ -59,8 +73,11 @@ class ChunkGeometrygroups(object):
 
 class ChunkMappinggroups(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, mappinggroups):
+        self.mappinggroups = mappinggroups
+
+    def empty(self):
+        return not self.mappinggroups
 
     def get_length(self):
         pass
@@ -70,8 +87,11 @@ class ChunkMappinggroups(object):
 
 class ChunkFacelayers(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, facelayers):
+        self.facelayers = facelayers
+
+    def empty(self):
+        return not self.facelayers
 
     def get_length(self):
         pass
@@ -86,11 +106,13 @@ class ChunkFaces(object):
         self.faces = faces
         self.format = "III"
 
+    def empty(self):
+        return not self.faces
+
     def get_length(self):
         length = calcsize(self.format)
         for face in self.faces:
             length += face.get_length()
-        print("chunk_faces_length: %d" % length)
         return length
 
     def dump(self):
@@ -98,7 +120,6 @@ class ChunkFaces(object):
         bytes = pack(self.format, self.id, chunk_length, len(self.faces))
         for face in self.faces:
             bytes += face.dump()
-        print("byte_len: %d" % len(bytes))
         return bytes
 
 class ChunkEdges(object):
@@ -107,6 +128,9 @@ class ChunkEdges(object):
         self.id = 2
         self.edges = edges
         self.format = "III"
+
+    def empty(self):
+        return not self.edges
 
     def get_length(self):
         length = calcsize(self.format)
@@ -128,6 +152,9 @@ class ChunkVertices(object):
         self.vertices = vertices
         self.format = "III"
 
+    def empty(self):
+        return not self.vertices
+
     def get_length(self):
         length = calcsize(self.format)
         for vertex in self.vertices:
@@ -143,11 +170,14 @@ class ChunkVertices(object):
 
 class ChunkTriangles(object):
 
-    def __init__(self):
+    def __init__(self, triangles):
         self.id = 5
-        self.ghostvertices = []
-        self.smoothednormals = []
-        self.triangles = []
+        self.ghostvertices = triangles["ghostvertices"]
+        self.smoothednormals = triangles["smoothednormals"]
+        self.triangles = triangles["triangles"]
+
+    def empty(self):
+        return not (self.ghostvertices or self.smoothednormals or self.triangles)
 
     def get_length(self):
         return 20
@@ -168,21 +198,28 @@ class ChunkTriangles(object):
 
 class ChunkMaterials(object):
 
-    def __init__(self):
-        self.chunk_id = 4
-        self.materials = []
+    def __init__(self, materials):
+        self.id = 4
+        self.materials = materials
         self.format = "III"
+
+    def empty(self):
+        return not self.materials
 
     def get_length(self):
         length = calcsize(self.format)
         for material in self.materials:
-            length += material.get_length()
+            length += 4 + len(material)
         return length
 
     def dump(self):
-        data = pack(self.format, self.chunk_id, self.get_length(), len(self.materials))
+        chunk_length = self.get_length() - 8
+        data = b""
+        data += pack(self.format, self.id, chunk_length, len(self.materials))
         for material in self.materials:
-            data += material.dump()
+            data += pack("I", len(material))
+            encoded = material.encode("utf-8")
+            data += encoded
         return data
 
 class Vector(object):
@@ -269,8 +306,8 @@ class Face(object):
         self.angle = 0.0
         self.border_edgeloop = border_edgeloop
         self.edgeloops = []
-        self.mapping_group = -1
-        self.material = -1
+        self.mapping_group = 4294967295
+        self.material = 4294967295
         self.format = "fffffIII"
 
     def get_length(self):
@@ -278,16 +315,23 @@ class Face(object):
         length += self.border_edgeloop.get_length()
         for edgeloop in self.edgeloops:
             length += edgeloop.get_length()
-        print("test: %d" % length)
         return length
 
     def dump(self):
-        data = pack(self.format, self.angle, self.offset[0], self.offset[1], self.scale[0], self.scale[1],
-                                self.mapping_group, self.material, len(self.edgeloops))
+        data = pack(
+            self.format,
+            self.angle,
+            self.offset[0],
+            self.offset[1],
+            self.scale[0],
+            self.scale[1],
+            self.mapping_group,
+            self.material,
+            len(self.edgeloops)
+        )
         data += self.border_edgeloop.dump()
         for edgeloop in self.edgeloops:
             data += edgeloop.dump()
-        print("test2: %d" % len(data))
         return data
 
 class Triangle(object):

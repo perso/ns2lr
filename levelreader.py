@@ -69,7 +69,11 @@ class LevelReader(object):
         stream.write(chunk.dump())
 
     def write_mesh(self, stream):
-        #self.write_materials(stream, materials)
+        materials = (
+            "materials/dev/dev_floor_grid.material",
+            "materials/descent/descent_wall_01_a.material",
+            "materials/descent/descent_floor_05.material",
+        )
         vertices = (
             Vertex(0, 5.0, 0.0, 0.0),
             Vertex(2, 0.0, 5.0, 0.0),
@@ -86,13 +90,31 @@ class LevelReader(object):
             Face(0, EdgeLoop(edges[0], edges[1], edges[2])),
             Face(1, EdgeLoop(edges[1], edges[2], edges[3])),
         )
+        facelayers = (
 
-        chunk = ChunkMesh(vertices=vertices, edges=edges, faces=faces)
+        )
+        mappinggroups = (
+
+        )
+        geometrygroups = (
+
+        )
+        triangles = {
+            "ghostvertices": (
+
+            ),
+            "smoothednormals": (
+
+            ),
+            "triangles": (
+
+            )
+        }
+
+        chunk = ChunkMesh(materials=materials, vertices=vertices, edges=edges, faces=faces, facelayers=facelayers,
+                          mappinggroups=mappinggroups, geometrygroups=geometrygroups, triangles=triangles)
         stream.write(chunk.dump())
 
-        #self.write_vertices(stream, vertices)
-        #self.write_edges(stream, edges)
-        #self.write_faces(stream, faces)
         #self.write_facelayers(stream, facelayers)
         #self.write_mappinggroups(mappinggroups)
         #self.write_geometrygroups(geometrygroups)
