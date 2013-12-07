@@ -31,7 +31,7 @@ class ChunkMeshParser(BinaryReader):
             mesh_chunk_length = self.read_unsigned_int32()
             mesh_chunk = self.read_bytes(mesh_chunk_length)
 
-            #print("\tid: %d, length: %d" % (mesh_chunk_id, len(mesh_chunk)))
+            print("\tid: %d, length: %d" % (mesh_chunk_id, len(mesh_chunk)))
 
             if mesh_chunk_id == 1:
                 self.vertices = self.parse_chunk_vertices(mesh_chunk)
@@ -155,9 +155,9 @@ class ChunkMeshParser(BinaryReader):
             smoothed_normals.append(smoothed_normal)
         num_faces = parser.read_unsigned_int32()
         num_triangles = parser.read_unsigned_int32()
-        triangles = {"number": num_triangles, "triangles": []}
+        triangles = {"total": num_triangles, "faces": []}
         for i in range(num_faces):
-            triangles["triangles"].append([])
+            triangles["faces"].append([])
             num_face_triangles = parser.read_unsigned_int32()
             for j in range(num_face_triangles):
                 vertex_index1 = parser.read_unsigned_int32()
@@ -166,7 +166,7 @@ class ChunkMeshParser(BinaryReader):
                 smoothed_normal_index1 = parser.read_unsigned_int32()
                 smoothed_normal_index2 = parser.read_unsigned_int32()
                 smoothed_normal_index3 = parser.read_unsigned_int32()
-                triangles["triangles"][i].append({
+                triangles["faces"][i].append({
                     "vi_1": vertex_index1,
                     "vi_2": vertex_index2,
                     "vi_3": vertex_index3,
@@ -185,7 +185,8 @@ class ChunkMeshParser(BinaryReader):
             raise errors.ParseError("Error: format is not 2")
         for i in range(num_facelayers):
             facelayers.append([])
-            has_layers = bool(parser.read_unsigned_int32())
+            has_layers = parser.read_unsigned_int32()
+            has_layers = bool(has_layers)
             if has_layers:
                 num_layerbitvalues = parser.read_unsigned_int32()
                 for j in range(num_layerbitvalues):
@@ -240,9 +241,11 @@ class ChunkMeshParser(BinaryReader):
             for j in range(num_indices):
                 index = parser.read_unsigned_int32()
                 facegroups[fgid].append(index)
-        return {
+        groups = {
             "vertexgroups": vertexgroups,
             "edgegroups": edgegroups,
             "facegroups": facegroups
         }
+        pprint.pprint(groups)
+        return groups
 

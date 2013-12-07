@@ -104,15 +104,27 @@ class LevelReader(object):
         viewport = parser.get_viewport()
         editorsettings = parser.get_editorsettings()
 
-        pprint.pprint(mesh)
+        #pprint.pprint(mesh)
 
         self.materials = mesh["materials"]
         for i, vertex in enumerate(mesh["vertices"]):
             self.vertices.append(Vertex(i, vertex["x"], vertex["y"], vertex["z"]))
         for i, edge in enumerate(mesh["edges"]):
             self.edges.append(Edge(i, self.vertices[edge["vi_1"]], self.vertices[edge["vi_2"]]))
-        #for i, face in enumerate(mesh["faces"]):
-        #    border = []
-        #    for edge in face["border_edgeloop"]:
-        #        border.append({"edge": self.edges[edge["edge_index"]], "is_flipped": edge["is_flipped"]})
-        #    self.faces.append(Face(i, EdgeLoop(border), face["materialid"]))
+        for i, face in enumerate(mesh["faces"]):
+            border = []
+            for edge in face["border_edgeloop"]:
+                border.append({"edge": self.edges[edge["edge_index"]], "is_flipped": edge["is_flipped"]})
+            self.faces.append(Face(i, EdgeLoop(border), face["materialid"]))
+        triangles = {"total": mesh["triangles"]["total"], "faces": []}
+        for i, face_triangles in enumerate(mesh["triangles"]["faces"]):
+            triangles["faces"].append([])
+            for j, triangle in enumerate(face_triangles):
+                triangles["faces"][i].append(Triangle(
+                    self.vertices[triangle["vi_1"]],
+                    self.vertices[triangle["vi_2"]],
+                    self.vertices[triangle["vi_3"]]
+                ))
+        self.triangles = triangles
+        for i, facelayer in enumerate(mesh["face_layers"]):
+            self.facelayers.append(Facelayer(facelayer))

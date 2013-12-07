@@ -110,7 +110,7 @@ class ChunkFacelayers(object):
     def get_length(self):
         length = calcsize(self.format)
         for facelayer in self.facelayers:
-            length += 4
+            length += facelayer.get_length()
         return length
 
     def dump(self):
@@ -119,8 +119,7 @@ class ChunkFacelayers(object):
         format = 2
         data = pack(self.format, self.id, chunk_length, num_facelayers, format)
         for facelayer in self.facelayers:
-            has_layers = facelayer["has_layers"]
-            data += pack("I", has_layers)
+            data += facelayer.dump()
         return data
 
 class ChunkFaces(object):
@@ -389,4 +388,29 @@ class Triangle(object):
 
     def dump(self):
         data = pack(self.format, self.v1.id, self.v2.id, self.v3.id, self.n1.id, self.n2.id, self.n3.id)
+        return data
+
+class Facelayer(object):
+
+    def __init__(self, bitvalues):
+        self.bitvalues = bitvalues
+        if len(self.bitvalues) > 0:
+            self.has_layers = True
+        else:
+            self.has_layers = False
+
+    def get_length(self):
+        length = 4
+        if self.has_layers:
+            length += 4
+        for bitvalue in self.bitvalues:
+            length += 4
+        return length
+
+    def dump(self):
+        data = pack("I", int(self.has_layers))
+        if self.has_layers:
+            data += pack("I", len(self.bitvalues))
+            for bitvalue in self.bitvalues:
+                data += pack("I", bitvalue)
         return data
