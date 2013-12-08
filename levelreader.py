@@ -22,6 +22,7 @@ class LevelReader(object):
         self.faces = []
         self.triangles = []
         self.facelayers = []
+        self.mappinggroups = []
 
     def write_viewport(self, stream):
         with io.open("chunkviewport.bin", "rb") as fh:
@@ -83,7 +84,7 @@ class LevelReader(object):
 
         #chunk = ChunkMesh(materials=materials, vertices=vertices, edges=edges, faces=faces, triangles=triangles, facelayers=facelayers)
         chunk = ChunkMesh(materials=self.materials, vertices=self.vertices, edges=self.edges, faces=self.faces,
-                          triangles=self.triangles, facelayers=self.facelayers)
+                          triangles=self.triangles, facelayers=self.facelayers, mappinggroups=self.mappinggroups)
         stream.write(chunk.dump())
 
     def write_level(self, filename):
@@ -106,17 +107,22 @@ class LevelReader(object):
 
         #pprint.pprint(mesh)
 
+        # materials
         self.materials = mesh["materials"]
+        # vertices
         for i, vertex in enumerate(mesh["vertices"]):
             self.vertices.append(Vertex(i, vertex["x"], vertex["y"], vertex["z"]))
+        # edges
         for i, edge in enumerate(mesh["edges"]):
             self.edges.append(Edge(i, self.vertices[edge["vi_1"]], self.vertices[edge["vi_2"]]))
+        # faces
         for i, face in enumerate(mesh["faces"]):
             border = []
             for edge in face["border_edgeloop"]:
                 border.append({"edge": self.edges[edge["edge_index"]], "is_flipped": edge["is_flipped"]})
             self.faces.append(Face(i, EdgeLoop(border), face["materialid"], face["scale"], face["offset"],
                                    face["angle"], face["mapping_group_id"]))
+        # triangles
         triangles = {"total": mesh["triangles"]["total"], "faces": []}
         for i, face_triangles in enumerate(mesh["triangles"]["faces"]):
             triangles["faces"].append([])
@@ -127,5 +133,14 @@ class LevelReader(object):
                     self.vertices[triangle["vi_3"]]
                 ))
         self.triangles = triangles
+        # facelayers
         for i, facelayer in enumerate(mesh["face_layers"]):
             self.facelayers.append(Facelayer(facelayer))
+        for i, group in mesh["mapping_groups"].items():
+            self.mappinggroups.append(Mappinggroup(i, group["angle"], group["scale"], group["offset"], group["normal"]))
+
+        #mgid = parser.read_unsigned_int32()
+        #angle = parser.read_float32()
+        #scale = parser.read_vec2_float32()
+        #offset = parser.read_vec2_float32()
+        #normal = parser.read_vec3_float32()

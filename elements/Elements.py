@@ -25,7 +25,7 @@ class ChunkHeader(object):
 
 class ChunkMesh(object):
 
-    def __init__(self, vertices=(), edges=(), faces=(), materials=(), facelayers=(), mappinggroups=(),
+    def __init__(self, vertices=(), edges=(), faces=(), materials=(), facelayers=(), mappinggroups={},
                        geometrygroups=(), triangles={}, smoothednormals=(), ghostvertices=()):
         self.id = 2
         self.chunks = [
@@ -79,6 +79,23 @@ class ChunkGeometrygroups(object):
         num_facegroups = 0
         return pack(self.format, self.id, chunk_length, num_vertexgroups, num_edgegroups, num_facegroups)
 
+class Mappinggroup(object):
+
+    def __init__(self, id, angle, scale, offset, normal):
+        self.id = id
+        self.angle = angle
+        self.scale = scale
+        self.offset = offset
+        self.normal = normal
+        self.format = "Ifffffff"
+
+    def get_length(self):
+        return calcsize(self.format)
+
+    def dump(self):
+        return pack(self.format, self.id, self.angle, self.scale[0], self.scale[1],
+                    self.offset[0], self.offset[1], self.normal[0], self.normal[1])
+
 class ChunkMappinggroups(object):
 
     def __init__(self, mappinggroups):
@@ -90,12 +107,18 @@ class ChunkMappinggroups(object):
         return False
 
     def get_length(self):
-        return calcsize(self.format)
+        length = calcsize(self.format)
+        for group in self.mappinggroups:
+            length += group.get_length()
+        return length
 
     def dump(self):
         chunk_length = self.get_length() - 8
         num_mappinggroups = 0
-        return pack(self.format, self.id, chunk_length, num_mappinggroups)
+        data = pack(self.format, self.id, chunk_length, num_mappinggroups)
+        for group in self.mappinggroups:
+            data += group.dump()
+        return data
 
 class ChunkFacelayers(object):
 
