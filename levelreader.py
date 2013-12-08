@@ -115,7 +115,8 @@ class LevelReader(object):
             border = []
             for edge in face["border_edgeloop"]:
                 border.append({"edge": self.edges[edge["edge_index"]], "is_flipped": edge["is_flipped"]})
-            self.faces.append(Face(i, EdgeLoop(border), face["materialid"]))
+            self.faces.append(Face(i, EdgeLoop(border), face["materialid"], face["scale"], face["offset"],
+                                   face["angle"], face["mapping_group_id"]))
         triangles = {"total": mesh["triangles"]["total"], "faces": []}
         for i, face_triangles in enumerate(mesh["triangles"]["faces"]):
             triangles["faces"].append([])

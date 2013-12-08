@@ -17,7 +17,7 @@ class ChunkParser(object):
     def __init__(self, chunk_id, chunk, version):
         self.chunk_parser = None
 
-        print("id: %d, length: %d" % (chunk_id, len(chunk)))
+        #print("id: %d, length: %d" % (chunk_id, len(chunk)))
 
         if chunk_id == 1:
             self.chunk_parser = ChunkObjectParser(chunk, version)

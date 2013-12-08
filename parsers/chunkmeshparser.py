@@ -31,7 +31,7 @@ class ChunkMeshParser(BinaryReader):
             mesh_chunk_length = self.read_unsigned_int32()
             mesh_chunk = self.read_bytes(mesh_chunk_length)
 
-            print("\tid: %d, length: %d" % (mesh_chunk_id, len(mesh_chunk)))
+            #print("\tid: %d, length: %d" % (mesh_chunk_id, len(mesh_chunk)))
 
             if mesh_chunk_id == 1:
                 self.vertices = self.parse_chunk_vertices(mesh_chunk)
@@ -246,6 +246,5 @@ class ChunkMeshParser(BinaryReader):
             "edgegroups": edgegroups,
             "facegroups": facegroups
         }
-        pprint.pprint(groups)
         return groups
 

@@ -337,14 +337,15 @@ class EdgeLoop(object):
 
 class Face(object):
 
-    def __init__(self, id, border_edgeloop, material):
+    def __init__(self, id, border_edgeloop, material, scale=(1.0, 1.0),
+                 offset=(0.0, 0.0), angle=0.0, mapping_group=4294967295):
         self.id = id
-        self.scale = (1.0, 1.0)
-        self.offset = (0.0, 0.0)
-        self.angle = 0.0
+        self.scale = scale
+        self.offset = offset
+        self.angle = angle
         self.border_edgeloop = border_edgeloop
         self.edgeloops = []
-        self.mapping_group = 4294967295
+        self.mapping_group = mapping_group
         self.material = material
         self.format = "fffffIII"
 
