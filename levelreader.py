@@ -23,6 +23,7 @@ class LevelReader(object):
         self.triangles = []
         self.facelayers = []
         self.mappinggroups = []
+        self.geometrygroups = []
 
     def write_viewport(self, stream):
         with io.open("chunkviewport.bin", "rb") as fh:
@@ -84,7 +85,7 @@ class LevelReader(object):
 
         #chunk = ChunkMesh(materials=materials, vertices=vertices, edges=edges, faces=faces, triangles=triangles, facelayers=facelayers)
         chunk = ChunkMesh(materials=self.materials, vertices=self.vertices, edges=self.edges, faces=self.faces,
-                          triangles=self.triangles, facelayers=self.facelayers, mappinggroups=self.mappinggroups)
+                          triangles=self.triangles, facelayers=self.facelayers, mappinggroups=self.mappinggroups, geometrygroups=self.geometrygroups)
         stream.write(chunk.dump())
 
     def write_level(self, filename):
@@ -133,11 +134,18 @@ class LevelReader(object):
                     self.vertices[triangle["vi_3"]]
                 ))
         self.triangles = triangles
-        # facelayers
+        # face layers
         for i, facelayer in enumerate(mesh["face_layers"]):
             self.facelayers.append(Facelayer(facelayer))
-        for i, group in mesh["mapping_groups"].items():
-            self.mappinggroups.append(Mappinggroup(i, group["angle"], group["scale"], group["offset"], group["normal"]))
+        # mapping groups
+        for gid, group in mesh["mapping_groups"].items():
+            self.mappinggroups.append(Mappinggroup(gid, group["angle"], group["scale"], group["offset"], group["normal"]))
+        # geometry groups
+        for groupname, group in mesh["geometry_groups"].items():
+            for gid, indices in group.items():
+                print(gid)
+                print(indices)
+                self.geometrygroups.append(Geometrygroup(gid, indices))
 
         #mgid = parser.read_unsigned_int32()
         #angle = parser.read_float32()

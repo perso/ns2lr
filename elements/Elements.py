@@ -63,38 +63,43 @@ class ChunkGeometrygroups(object):
 
     def __init__(self, geometrygroups):
         self.id = 8
-        self.geometrygroups = geometrygroups
-        self.format = "IIIII"
+        self.vertexgroups = geometrygroups["vertexgroups"]
+        self.edgegroups = geometrygroups["edgegroups"]
+        self.facegroups = geometrygroups["facegroups"]
 
     def empty(self):
         return False
 
     def get_length(self):
-        return calcsize(self.format)
+        length = 20
+        for group in self.vertexgroups:
+            length += group.get_length()
+        for group in self.edgegroups:
+            length += group.get_length()
+        for group in self.facegroups:
+            length += group.get_length()
+        return length
 
     def dump(self):
         chunk_length = self.get_length() - 8
-        num_vertexgroups = 0
-        num_edgegroups = 0
-        num_facegroups = 0
-        return pack(self.format, self.id, chunk_length, num_vertexgroups, num_edgegroups, num_facegroups)
+        num_vertexgroups = len(self.vertexgroups)
+        num_edgegroups = len(self.edgegroups)
+        num_facegroups = len(self.facegroups)
+        data = pack("II", self.id, chunk_length)
 
-class Mappinggroup(object):
+        data += pack("I", num_vertexgroups)
+        for group in self.vertexgroups:
+            data += group.dump()
 
-    def __init__(self, id, angle, scale, offset, normal):
-        self.id = id
-        self.angle = angle
-        self.scale = scale
-        self.offset = offset
-        self.normal = normal
-        self.format = "Ifffffff"
+        data += pack("I", num_edgegroups)
+        for group in self.edgegroups:
+            data += group.dump()
 
-    def get_length(self):
-        return calcsize(self.format)
+        data += pack("I", num_facegroups)
+        for group in self.facegroups:
+            data += group.dump()
 
-    def dump(self):
-        return pack(self.format, self.id, self.angle, self.scale[0], self.scale[1],
-                    self.offset[0], self.offset[1], self.normal[0], self.normal[1])
+        return data
 
 class ChunkMappinggroups(object):
 
@@ -437,4 +442,40 @@ class Facelayer(object):
             data += pack("I", len(self.bitvalues))
             for bitvalue in self.bitvalues:
                 data += pack("I", bitvalue)
+        return data
+
+class Mappinggroup(object):
+
+    def __init__(self, gid, angle, scale, offset, normal):
+        self.id = gid
+        self.angle = angle
+        self.scale = scale
+        self.offset = offset
+        self.normal = normal
+        self.format = "Ifffffff"
+
+    def get_length(self):
+        return calcsize(self.format)
+
+    def dump(self):
+        return pack(self.format, self.gid, self.angle, self.scale[0], self.scale[1],
+                    self.offset[0], self.offset[1], self.normal[0], self.normal[1])
+
+class Geometrygroup(object):
+
+    def __init__(self, gid, indices):
+        self.gid = gid
+        self.indices = indices
+        self.format = "II"
+
+    def get_length(self):
+        length = calcsize(self.format)
+        for index in self.indices:
+            length += 4
+        return length
+
+    def dump(self):
+        data = pack(self.format, self.gid, len(self.indices))
+        for index in self.indices:
+            data += pack("I", index)
         return data

@@ -246,5 +246,6 @@ class ChunkMeshParser(BinaryReader):
             "edgegroups": edgegroups,
             "facegroups": facegroups
         }
+        pprint.pprint(groups)
         return groups
 
