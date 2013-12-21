@@ -16,6 +16,7 @@ class LevelReader(object):
     """Reads NS2 level files"""
 
     def __init__(self):
+        self.entities = []
         self.materials = []
         self.vertices = []
         self.edges = []
@@ -23,7 +24,11 @@ class LevelReader(object):
         self.triangles = []
         self.facelayers = []
         self.mappinggroups = []
-        self.geometrygroups = []
+        self.vertexgroups = []
+        self.edgegroups = []
+        self.facegroups = []
+        self.layers = []
+        self.groups = []
 
     def write_viewport(self, stream):
         with io.open("chunkviewport.bin", "rb") as fh:
@@ -85,8 +90,19 @@ class LevelReader(object):
 
         #chunk = ChunkMesh(materials=materials, vertices=vertices, edges=edges, faces=faces, triangles=triangles, facelayers=facelayers)
         chunk = ChunkMesh(materials=self.materials, vertices=self.vertices, edges=self.edges, faces=self.faces,
-                          triangles=self.triangles, facelayers=self.facelayers, mappinggroups=self.mappinggroups, geometrygroups=self.geometrygroups)
+                          triangles=self.triangles, facelayers=self.facelayers, mappinggroups=self.mappinggroups,
+                          vertexgroups=self.vertexgroups, edgegroups=self.edgegroups, facegroups=self.facegroups)
         stream.write(chunk.dump())
+        chunk = ChunkLayers(self.layers)
+        stream.write(chunk.dump())
+        chunk = ChunkGroups(self.groups)
+        stream.write(chunk.dump())
+
+        data = b""
+        for e in self.entities:
+            chunk = ChunkEntity(e)
+            data += chunk.dump()
+        stream.write(data)
 
     def write_level(self, filename):
         stream = io.open(filename, "wb")
@@ -96,6 +112,7 @@ class LevelReader(object):
         self.write_editorsettings(stream)
 
     def read_level(self, filename):
+
         parser = LevelParser(filename)
         parser.parse()
         entities = parser.get_entities()
@@ -106,16 +123,19 @@ class LevelReader(object):
         viewport = parser.get_viewport()
         editorsettings = parser.get_editorsettings()
 
-        #pprint.pprint(mesh)
+        pprint.pprint(entities)
 
         # materials
         self.materials = mesh["materials"]
+
         # vertices
         for i, vertex in enumerate(mesh["vertices"]):
             self.vertices.append(Vertex(i, vertex["x"], vertex["y"], vertex["z"]))
+
         # edges
         for i, edge in enumerate(mesh["edges"]):
             self.edges.append(Edge(i, self.vertices[edge["vi_1"]], self.vertices[edge["vi_2"]]))
+
         # faces
         for i, face in enumerate(mesh["faces"]):
             border = []
@@ -123,6 +143,7 @@ class LevelReader(object):
                 border.append({"edge": self.edges[edge["edge_index"]], "is_flipped": edge["is_flipped"]})
             self.faces.append(Face(i, EdgeLoop(border), face["materialid"], face["scale"], face["offset"],
                                    face["angle"], face["mapping_group_id"]))
+
         # triangles
         triangles = {"total": mesh["triangles"]["total"], "faces": []}
         for i, face_triangles in enumerate(mesh["triangles"]["faces"]):
@@ -134,21 +155,30 @@ class LevelReader(object):
                     self.vertices[triangle["vi_3"]]
                 ))
         self.triangles = triangles
+
         # face layers
         for i, facelayer in enumerate(mesh["face_layers"]):
             self.facelayers.append(Facelayer(facelayer))
+
         # mapping groups
         for gid, group in mesh["mapping_groups"].items():
             self.mappinggroups.append(Mappinggroup(gid, group["angle"], group["scale"], group["offset"], group["normal"]))
-        # geometry groups
-        for groupname, group in mesh["geometry_groups"].items():
-            for gid, indices in group.items():
-                print(gid)
-                print(indices)
-                self.geometrygroups.append(Geometrygroup(gid, indices))
 
-        #mgid = parser.read_unsigned_int32()
-        #angle = parser.read_float32()
-        #scale = parser.read_vec2_float32()
-        #offset = parser.read_vec2_float32()
-        #normal = parser.read_vec3_float32()
+        # geometry groups
+        for gid, indices in mesh["geometry_groups"]["vertexgroups"].items():
+            self.vertexgroups.append(Geometrygroup(gid, indices))
+        for gid, indices in mesh["geometry_groups"]["edgegroups"].items():
+            self.edgegroups.append(Geometrygroup(gid, indices))
+        for gid, indices in mesh["geometry_groups"]["facegroups"].items():
+            self.facegroups.append(Geometrygroup(gid, indices))
+
+        # layers
+        if layers:
+            for id, layer in layers.items():
+                self.layers.append(Layer(id, layer["name"], layer["is_visible"], layer["color"]))
+
+        # groups
+        if groups:
+            for id, group in groups.items():
+                self.groups.append(Group(id, group["name"], group["is_visible"], group["color"]))
+

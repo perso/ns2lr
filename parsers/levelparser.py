@@ -17,7 +17,7 @@ class ChunkParser(object):
     def __init__(self, chunk_id, chunk, version):
         self.chunk_parser = None
 
-        #print("id: %d, length: %d" % (chunk_id, len(chunk)))
+        print("id: %d, length: %d" % (chunk_id, len(chunk)))
 
         if chunk_id == 1:
             self.chunk_parser = ChunkObjectParser(chunk, version)
@@ -61,9 +61,11 @@ class LevelParser(BinaryReader):
                 chunk_id = self.read_unsigned_int32()
                 chunk_length = self.read_unsigned_int32()
                 value = self.read_chunk(chunk_id, chunk_length)
-                if chunk_id in (2,5):
+                if chunk_id in (2,3,5):
                     self.elements[chunk_id] = value
                 else:
+                    if chunk_id not in self.elements:
+                        self.elements[chunk_id] = []
                     self.elements[chunk_id].append(value)
             except IOError as e:
                 raise

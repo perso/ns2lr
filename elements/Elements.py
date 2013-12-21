@@ -23,10 +23,21 @@ class ChunkHeader(object):
     def dump(self):
         return self.magicnumber.encode("utf-8") + pack("B", self.version)
 
+class Entity(object):
+
+    def __init__(self):
+        pass
+
+class ChunkEntity(object):
+
+    def __init__(self):
+        pass
+
 class ChunkMesh(object):
 
     def __init__(self, vertices=(), edges=(), faces=(), materials=(), facelayers=(), mappinggroups={},
-                       geometrygroups=(), triangles={}, smoothednormals=(), ghostvertices=()):
+                       geometrygroups=(), triangles={}, smoothednormals=(), ghostvertices=(),
+                       vertexgroups=(), edgegroups=(), facegroups=()):
         self.id = 2
         self.chunks = [
             ChunkMaterials(materials),
@@ -35,7 +46,7 @@ class ChunkMesh(object):
             ChunkFaces(faces),
             ChunkFacelayers(facelayers),
             ChunkMappinggroups(mappinggroups),
-            ChunkGeometrygroups(geometrygroups),
+            ChunkGeometrygroups(vertexgroups, edgegroups, facegroups),
             ChunkTriangles(ghostvertices, smoothednormals, triangles)
         ]
         self.format = "II"
@@ -61,11 +72,11 @@ class ChunkMesh(object):
 
 class ChunkGeometrygroups(object):
 
-    def __init__(self, geometrygroups):
+    def __init__(self, vertexgroups, edgegroups, facegroups):
         self.id = 8
-        self.vertexgroups = geometrygroups["vertexgroups"]
-        self.edgegroups = geometrygroups["edgegroups"]
-        self.facegroups = geometrygroups["facegroups"]
+        self.vertexgroups = vertexgroups
+        self.edgegroups = edgegroups
+        self.facegroups = facegroups
 
     def empty(self):
         return False
@@ -99,6 +110,52 @@ class ChunkGeometrygroups(object):
         for group in self.facegroups:
             data += group.dump()
 
+        return data
+
+class ChunkLayers(object):
+
+    def __init__(self, layers):
+        self.id = 3
+        self.layers = layers
+        self.format = "III"
+
+    def empty(self):
+        return not self.layers > 0
+
+    def get_length(self):
+        length = calcsize(self.format)
+        for layer in self.layers:
+            length += layer.get_length()
+        return length
+
+    def dump(self):
+        chunk_length = self.get_length() - 8
+        data = pack(self.format, self.id, chunk_length, len(self.layers))
+        for layer in self.layers:
+            data += layer.dump()
+        return data
+
+class ChunkGroups(object):
+
+    def __init__(self, groups):
+        self.id = 5
+        self.groups = groups
+        self.format = "III"
+
+    def empty(self):
+        return not self.groups > 0
+
+    def get_length(self):
+        length = calcsize(self.format)
+        for group in self.groups:
+            length += group.get_length()
+        return length
+
+    def dump(self):
+        chunk_length = self.get_length() - 8
+        data = pack(self.format, self.id, chunk_length, len(self.groups))
+        for group in self.groups:
+            data += group.dump()
         return data
 
 class ChunkMappinggroups(object):
@@ -479,3 +536,27 @@ class Geometrygroup(object):
         for index in self.indices:
             data += pack("I", index)
         return data
+
+class Layer(object):
+
+    def __init__(self, id, name, visible, color):
+        self.id = id
+        self.name = name
+        self.visible = visible
+        self.color = color
+
+    def get_length(self):
+        length = calcsize("IIIIIII")
+        length += len(self.name)
+        return length
+
+    def dump(self):
+        data = pack("I", int(len(self.name.encode("utf-8"))/2))
+        data += self.name.encode("utf-8")
+        data += pack("I", int(self.visible))
+        data += pack("IIII", self.color["red"], self.color["green"], self.color["blue"], self.color["alpha"])
+        data += pack("I", self.id)
+        return data
+
+class Group(Layer):
+    pass

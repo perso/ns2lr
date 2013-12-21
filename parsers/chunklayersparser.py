@@ -26,3 +26,4 @@ class ChunkLayersParser(BinaryReader):
                     "alpha": color[3]
                 }
             }
+        return self.layers

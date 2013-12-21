@@ -121,6 +121,7 @@ class ChunkObjectParser(BinaryReader):
             "classname": classname,
             "groupid": groupid,
             "layerdata": layerdata,
+            "is_animated": is_animated,
             "properties": properties
         }
 
